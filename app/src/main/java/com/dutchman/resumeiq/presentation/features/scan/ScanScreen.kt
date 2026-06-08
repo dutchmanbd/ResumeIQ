@@ -1,8 +1,13 @@
 package com.dutchman.resumeiq.presentation.features.scan
 
+import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -23,26 +28,92 @@ import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.QuestionMark
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.foundation.clickable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
-fun ScanScreen() {
-    var showPreview by remember { mutableStateOf(false) }
+fun ScanScreen(viewModel: ScanViewModel = hiltViewModel()) {
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            viewModel.onEvent(ScanEvent.OnFileSelected(it, context))
+        }
+    }
+
+    var selectedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    val selectedPages = remember { mutableStateListOf<Int>(0) } // Default page 1 (index 0) selected
+
+    if (selectedImageBitmap != null) {
+        Dialog(onDismissRequest = { selectedImageBitmap = null }) {
+            var scale by remember { mutableStateOf(1f) }
+            var offset by remember { mutableStateOf(Offset.Zero) }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .background(Color.White, RoundedCornerShape(12.dp))
+                    .padding(16.dp)
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            scale = maxOf(1f, minOf(scale * zoom, 5f))
+                            val maxX = (size.width * (scale - 1)) / 2
+                            val maxY = (size.height * (scale - 1)) / 2
+                            offset = Offset(
+                                x = (offset.x + pan.x * scale).coerceIn(-maxX, maxX),
+                                y = (offset.y + pan.y * scale).coerceIn(-maxY, maxY)
+                            )
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    bitmap = selectedImageBitmap!!.asImageBitmap(),
+                    contentDescription = "Preview",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .graphicsLayer(
+                            scaleX = scale,
+                            scaleY = scale,
+                            translationX = offset.x,
+                            translationY = offset.y
+                        ),
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -57,7 +128,6 @@ fun ScanScreen() {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF8F9FA))
             )
         },
-
         containerColor = Color(0xFFF8F9FA)
     ) { paddingValues ->
         Column(
@@ -89,7 +159,7 @@ fun ScanScreen() {
             Spacer(modifier = Modifier.height(24.dp))
             
             OptionCard(
-                onClick = { showPreview = true },
+                onClick = { launcher.launch(arrayOf("application/pdf", "image/*")) },
                 icon = {
                     Surface(
                         color = Color(0xFF1661D7),
@@ -108,7 +178,7 @@ fun ScanScreen() {
             Spacer(modifier = Modifier.height(12.dp))
             
             OptionCard(
-                onClick = { showPreview = true },
+                onClick = { /* Handle camera scan */ },
                 icon = {
                     Surface(
                         color = Color(0xFF86F286),
@@ -126,103 +196,120 @@ fun ScanScreen() {
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            if (showPreview) {
+            if (uiState.showPreview) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFF1661D7), modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Resume Preview:", fontSize = 16.sp, color = Color(0xFF1A202C))
-                    Text("resume_final_v2.pdf", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A202C))
-                }
-                Surface(
-                    color = Color(0xFFE2E8F0),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFF1661D7), modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Resume Preview:", fontSize = 16.sp, color = Color(0xFF1A202C))
+                        Text(uiState.fileName.ifEmpty { "resume_final_v2.pdf" }, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A202C))
+                    }
+                    Surface(
+                        color = Color(0xFFE2E8F0),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
-                        Text("4", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
-                        Text("Pages", fontSize = 10.sp, color = Color.DarkGray)
+                        Column(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(uiState.pageCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
+                            Text("Pages", fontSize = 10.sp, color = Color.DarkGray)
+                        }
                     }
                 }
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PagePreviewCard(
-                    modifier = Modifier.weight(1f),
-                    pageNumber = 1,
-                    isSelected = true,
-                    placeholderColor = Color(0xFFD6BCA8)
-                )
-                PagePreviewCard(
-                    modifier = Modifier.weight(1f),
-                    pageNumber = 2,
-                    isSelected = false,
-                    placeholderColor = Color(0xFF5A5E61)
-                )
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PagePreviewCard(
-                    modifier = Modifier.weight(1f),
-                    pageNumber = 3,
-                    isSelected = false,
-                    placeholderColor = Color(0xFF717D82)
-                )
-                PagePreviewCard(
-                    modifier = Modifier.weight(1f),
-                    pageNumber = 4,
-                    isSelected = false,
-                    placeholderColor = Color(0xFF4A4E52)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Surface(
-                color = Color(0xFFEBF3FF),
-                border = BorderStroke(1.dp, Color(0xFFB0D0FF)),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(modifier = Modifier.padding(16.dp)) {
-                    Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = Color(0xFF1661D7), modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text("AI RECOMMENDATION", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A202C))
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("We recommend selecting Page 1 and 2 as they contain your primary work experience and key technical achievements.", fontSize = 13.sp, color = Color(0xFF2D3748), lineHeight = 18.sp)
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                if (uiState.isProcessing) {
+                    Box(modifier = Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color(0xFF1661D7))
+                    }
+                } else if (uiState.previewImages.isNotEmpty()) {
+                    val images = uiState.previewImages
+                    images.chunked(2).forEachIndexed { chunkIndex, chunk ->
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            for (i in 0 until 2) {
+                                val imageIndex = chunkIndex * 2 + i
+                                val bitmap = chunk.getOrNull(i)
+                                val isSelected = selectedPages.contains(imageIndex)
+                                
+                                if (bitmap != null) {
+                                    PagePreviewCard(
+                                        modifier = Modifier.weight(1f),
+                                        pageNumber = imageIndex + 1,
+                                        isSelected = isSelected,
+                                        bitmap = bitmap,
+                                        onClick = { selectedImageBitmap = bitmap },
+                                        onLongClick = {
+                                            if (selectedPages.contains(imageIndex)) {
+                                                selectedPages.remove(imageIndex)
+                                            } else {
+                                                selectedPages.add(imageIndex)
+                                            }
+                                        }
+                                    )
+                                } else if (imageIndex < uiState.pageCount.coerceAtMost(10)) {
+                                    // Placeholder if image is missing but it's within count
+                                    PagePreviewCard(
+                                        modifier = Modifier.weight(1f),
+                                        pageNumber = imageIndex + 1,
+                                        isSelected = false,
+                                        bitmap = null,
+                                        onClick = {},
+                                        onLongClick = {}
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Button(
-                onClick = { /*TODO*/ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F62FE))
-            ) {
-                Icon(Icons.Outlined.Psychology, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Generate Questions", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            Text(
-                "Estimated analysis time: 15 seconds",
-                fontSize = 11.sp,
-                color = Color.Gray,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-            
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Surface(
+                    color = Color(0xFFEBF3FF),
+                    border = BorderStroke(1.dp, Color(0xFFB0D0FF)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(modifier = Modifier.padding(16.dp)) {
+                        Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = Color(0xFF1661D7), modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("AI RECOMMENDATION", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A202C))
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("We recommend selecting Page 1 and 2 as they contain your primary work experience and key technical achievements.", fontSize = 13.sp, color = Color(0xFF2D3748), lineHeight = 18.sp)
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Button(
+                    onClick = { /*TODO*/ },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F62FE))
+                ) {
+                    Icon(Icons.Outlined.Psychology, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Generate Questions", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text(
+                    "Estimated analysis time: 15 seconds",
+                    fontSize = 11.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+                
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
@@ -255,48 +342,79 @@ fun OptionCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PagePreviewCard(
     modifier: Modifier = Modifier,
     pageNumber: Int,
     isSelected: Boolean,
-    placeholderColor: Color
+    bitmap: Bitmap? = null,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
-    val borderColor = if (isSelected) Color(0xFF1661D7) else Color.Transparent
-    val borderWidth = if (isSelected) 2.dp else 0.dp
+    // Only apply border if selected AND we have a valid image for this slot, or we just keep it simple.
+    // The design shows the border regardless, assuming pages exist.
+    // However, if there's no bitmap, we shouldn't show the checkmark or border since it's an empty slot.
+    val hasContent = bitmap != null
+    val borderColor = if (isSelected && hasContent) Color(0xFF1661D7) else Color.Transparent
+    val borderWidth = if (isSelected && hasContent) 2.dp else 0.dp
     
     Box(
         modifier = modifier
             .height(160.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(placeholderColor)
+            .background(Color(0xFFE2E8F0))
             .border(borderWidth, borderColor, RoundedCornerShape(8.dp))
+            .combinedClickable(
+                enabled = hasContent,
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
     ) {
-        // Selection circle
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(8.dp)
-                .size(20.dp)
-                .clip(CircleShape)
-                .background(if (isSelected) Color(0xFF1661D7) else Color.LightGray.copy(alpha = 0.8f)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isSelected) {
-                Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-            }
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "Page $pageNumber",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
         }
-        
-        // Page text at bottom
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(Color.Black.copy(alpha = 0.2f))
-                .padding(vertical = 4.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Page $pageNumber", color = Color.Black.copy(alpha = 0.8f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
+        if (hasContent) {
+            // Selection circle
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(if (isSelected) Color(0xFF1661D7) else Color.LightGray.copy(alpha = 0.8f)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSelected) {
+                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                }
+            }
+            
+            // Page text at bottom
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Page $pageNumber", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        } else {
+            // Empty state placeholder text
+            Text(
+                "No Page", 
+                modifier = Modifier.align(Alignment.Center), 
+                color = Color.Gray, 
+                fontSize = 12.sp
+            )
         }
     }
 }
