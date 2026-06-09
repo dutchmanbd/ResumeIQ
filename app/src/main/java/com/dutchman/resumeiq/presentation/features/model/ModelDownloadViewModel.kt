@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.dutchman.resumeiq.domain.ai.GemmaLiteRTHelper
 
 data class DownloadState(
     val progress: Int = 0,
@@ -39,6 +40,8 @@ enum class DownloadStatus {
 class ModelDownloadViewModel @Inject constructor(
     application: Application,
     private val userFactory: UserFactory,
+    private val gemmaLiteRTHelper: GemmaLiteRTHelper,
+    private val fileStorage: FileStorage
 ) : AndroidViewModel(application) {
 
     private val workManager = WorkManager.getInstance(application)
@@ -110,6 +113,14 @@ class ModelDownloadViewModel @Inject constructor(
                                 status = DownloadStatus.SUCCESS,
                                 estimatedTimeRemaining = ""
                             )
+                            val file = fileStorage.getDownloadedFile()
+                            if (file != null && !gemmaLiteRTHelper.isInitialized) {
+                                try {
+                                    gemmaLiteRTHelper.initialize(file.absolutePath)
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
                         }
                         WorkInfo.State.FAILED -> {
                             userFactory.saveIsModelDownloaded(false)

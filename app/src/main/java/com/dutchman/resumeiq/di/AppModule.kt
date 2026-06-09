@@ -1,6 +1,7 @@
 package com.dutchman.resumeiq.di
 
 import android.content.Context
+import com.dutchman.resumeiq.domain.ai.GemmaLiteRTHelper
 import com.dutchman.resumeiq.domain.util.SharedPref
 import com.dutchman.resumeiq.domain.util.UserFactory
 import dagger.Module
@@ -26,4 +27,10 @@ object AppModule {
         sharedPref: SharedPref
     ): UserFactory = UserFactory(sharedPref)
 
+
+    @Provides
+    @Singleton
+    fun provideGemmaLiteRTHelper(
+        @ApplicationContext context: Context
+    ) = GemmaLiteRTHelper(context)
 }

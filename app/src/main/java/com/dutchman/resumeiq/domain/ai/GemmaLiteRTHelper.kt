@@ -18,6 +18,9 @@ class GemmaLiteRTHelper(
     private var engine: Engine? = null
     private var conversation: Conversation? = null
 
+    val isInitialized: Boolean
+        get() = engine != null && conversation != null
+
     companion object {
         private const val TAG = "GemmaLiteRTHelper"
     }
@@ -40,7 +43,7 @@ class GemmaLiteRTHelper(
                 modelPath = modelPath,
                 backend = textBackend,
                 visionBackend = visionBackend,
-                maxNumTokens = 1024,
+                maxNumTokens = 32000,
                 cacheDir = context.getExternalFilesDir(null)?.absolutePath
             )
 
@@ -51,9 +54,9 @@ class GemmaLiteRTHelper(
                 conversation = createConversation(
                     ConversationConfig(
                         samplerConfig = SamplerConfig(
-                            topK = 40,
-                            topP = 0.9,
-                            temperature = 0.8
+                            topK = 64,
+                            topP = 0.95,
+                            temperature = 1.0,
                         )
                     )
                 )
