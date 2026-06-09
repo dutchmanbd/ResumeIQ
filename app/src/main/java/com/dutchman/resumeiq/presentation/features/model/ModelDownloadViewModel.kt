@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.dutchman.resumeiq.domain.ai.GemmaLiteRTHelper
+import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
 
 data class DownloadState(
     val progress: Int = 0,
@@ -40,7 +40,7 @@ enum class DownloadStatus {
 class ModelDownloadViewModel @Inject constructor(
     application: Application,
     private val userFactory: UserFactory,
-    private val gemmaLiteRTHelper: GemmaLiteRTHelper,
+    private val gemmaInferenceHelper: GemmaInferenceHelper,
     private val fileStorage: FileStorage
 ) : AndroidViewModel(application) {
 
@@ -48,7 +48,7 @@ class ModelDownloadViewModel @Inject constructor(
     private val _downloadState = MutableStateFlow(DownloadState())
     val downloadState: StateFlow<DownloadState> = _downloadState.asStateFlow()
 
-    fun startDownload(modelUrl: String = Constants.MODEL_2B) {
+    fun startDownload(modelUrl: String = Constants.MODEL_4B) {
         _downloadState.value = _downloadState.value.copy(fileName = FileStorage.DISPLAY_NAME)
         
         val constraints = Constraints.Builder()
@@ -114,11 +114,13 @@ class ModelDownloadViewModel @Inject constructor(
                                 estimatedTimeRemaining = ""
                             )
                             val file = fileStorage.getDownloadedFile()
-                            if (file != null && !gemmaLiteRTHelper.isInitialized) {
-                                try {
-                                    gemmaLiteRTHelper.initialize(file.absolutePath)
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
+                            if (file != null) {
+                                viewModelScope.launch {
+                                    try {
+                                        gemmaInferenceHelper.initialize(file.absolutePath)
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
                                 }
                             }
                         }

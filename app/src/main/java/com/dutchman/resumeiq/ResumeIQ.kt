@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
-import com.dutchman.resumeiq.domain.ai.GemmaLiteRTHelper
+import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
 import com.dutchman.resumeiq.domain.util.FileStorage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,7 +18,7 @@ class ResumeIQ : Application(), Configuration.Provider {
     lateinit var workerFactory: HiltWorkerFactory
 
     @Inject
-    lateinit var gemmaLiteRTHelper: GemmaLiteRTHelper
+    lateinit var gemmaInferenceHelper: GemmaInferenceHelper
 
     @Inject
     lateinit var fileStorage: FileStorage
@@ -27,11 +27,10 @@ class ResumeIQ : Application(), Configuration.Provider {
         super.onCreate()
         CoroutineScope(Dispatchers.IO).launch {
             val file = fileStorage.getDownloadedFile()
-            if (file != null && !gemmaLiteRTHelper.isInitialized) {
+            if (file != null) {
                 try {
-                    gemmaLiteRTHelper.initialize(file.absolutePath)
+                    gemmaInferenceHelper.initialize(file.absolutePath)
                 } catch (e: Exception) {
-                    e.printStackTrace()
                 }
             }
         }

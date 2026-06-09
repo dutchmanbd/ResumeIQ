@@ -126,7 +126,7 @@ fun MainScreen(
         Box(modifier = Modifier.padding(paddingValues)) {
             DestinationsNavHost(
                 navGraph = NavGraphs.root,
-                start = if (uiState.isLoggedIn) QuestionScreenDestination else LoginScreenDestination,
+                start = if ((uiState.isLoggedIn || uiState.isSkip) && uiState.isModelDownloaded) QuestionScreenDestination else LoginScreenDestination,
                 navController = navController,
                 dependenciesContainerBuilder = {
                     dependency(viewModel)

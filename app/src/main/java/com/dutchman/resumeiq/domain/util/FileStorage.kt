@@ -27,7 +27,8 @@ class FileStorage @Inject constructor(@ApplicationContext private val context: C
     }
 
     companion object {
-        const val FILE_NAME = "gemma-4-E2B-it.litertlm"
+//        const val FILE_NAME = "gemma-4-E2B-it.litertlm"
+        const val FILE_NAME = "gemma-3n-E4B-it-int4.task"
         const val DISPLAY_NAME = "REM-4"
     }
 }

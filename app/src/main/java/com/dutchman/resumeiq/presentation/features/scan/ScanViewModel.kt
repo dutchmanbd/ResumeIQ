@@ -16,12 +16,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-import com.dutchman.resumeiq.domain.ai.GemmaLiteRTHelper
+import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
 import com.dutchman.resumeiq.domain.util.FileStorage
 
 @HiltViewModel
 class ScanViewModel @Inject constructor(
-    private val gemmaLiteRTHelper: GemmaLiteRTHelper,
+    private val gemmaInferenceHelper: GemmaInferenceHelper,
     private val fileStorage: FileStorage
 ) : ViewModel() {
 
@@ -67,14 +67,12 @@ class ScanViewModel @Inject constructor(
             _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
             
             try {
-                if (!gemmaLiteRTHelper.isInitialized) {
-                    val file = fileStorage.getDownloadedFile()
-                    if (file != null) {
-                        gemmaLiteRTHelper.initialize(file.absolutePath)
-                    } else {
-                        _uiState.update { it.copy(isGenerating = false) }
-                        return@launch
-                    }
+                val file = fileStorage.getDownloadedFile()
+                if (file != null) {
+                    gemmaInferenceHelper.initialize(file.absolutePath)
+                } else {
+                    _uiState.update { it.copy(isGenerating = false) }
+                    return@launch
                 }
 
                 val message = """
@@ -103,20 +101,15 @@ class ScanViewModel @Inject constructor(
                     3. Keep generating items sequentially until you have populated at least 10-20 distinct objects in the array. Do not truncate the list.
                 """.trimIndent()
 
-                gemmaLiteRTHelper.generateResponse(
+                gemmaInferenceHelper.generateResponse(
                     prompt = message,
-                    images = images,
-                    onPartialResult = { result ->
-                        _uiState.update { it.copy(generatedQuestions = it.generatedQuestions + result) }
-                    },
-                    onDone = {
-                        _uiState.update { it.copy(isGenerating = false) }
-                        parseGeneratedQuestions(_uiState.value.generatedQuestions)
-                    },
-                    onError = { error ->
-                        _uiState.update { it.copy(isGenerating = false) }
-                    }
-                )
+                    images = images
+                ).collect { result ->
+                    _uiState.update { it.copy(generatedQuestions = it.generatedQuestions + result) }
+                }
+                
+                _uiState.update { it.copy(isGenerating = false) }
+                parseGeneratedQuestions(_uiState.value.generatedQuestions)
             } catch (e: Throwable) {
                 e.printStackTrace()
                 _uiState.update { it.copy(isGenerating = false) }

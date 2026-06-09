@@ -1,7 +1,7 @@
 package com.dutchman.resumeiq.di
 
 import android.content.Context
-import com.dutchman.resumeiq.domain.ai.GemmaLiteRTHelper
+import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
 import com.dutchman.resumeiq.domain.util.SharedPref
 import com.dutchman.resumeiq.domain.util.UserFactory
 import dagger.Module
@@ -30,7 +30,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideGemmaLiteRTHelper(
+    fun provideGemmaInferenceHelper(
         @ApplicationContext context: Context
-    ) = GemmaLiteRTHelper(context)
+    ) = GemmaInferenceHelper(context, supportsVision = true)
 }
