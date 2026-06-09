@@ -64,59 +64,63 @@ class ScanViewModel @Inject constructor(
 
     private fun generateQuestions(images: List<Bitmap>) {
         viewModelScope.launch(Dispatchers.IO) {
-            if (!gemmaLiteRTHelper.isInitialized) {
-                val file = fileStorage.getDownloadedFile()
-                if (file != null) {
-                    try {
+            _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
+            
+            try {
+                if (!gemmaLiteRTHelper.isInitialized) {
+                    val file = fileStorage.getDownloadedFile()
+                    if (file != null) {
                         gemmaLiteRTHelper.initialize(file.absolutePath)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
+                    } else {
+                        _uiState.update { it.copy(isGenerating = false) }
                         return@launch
                     }
-                } else {
-                    return@launch
                 }
-            }
 
-            val message = """
-                You are an expert technical interviewer and executive recruiter. Your task is to analyze the text inside the provided resume image and generate a robust question bank for the interviewer.
+                val message = """
+                    You are an expert technical interviewer and executive recruiter. Your task is to analyze the text inside the provided resume image and generate a robust question bank for the interviewer.
 
-                OUTPUT REQUIREMENT:
-                You must generate a MINIMUM of 10 and a MAXIMUM of 20 distinct interview questions. 
-                
-                For each question, you must assign a difficulty level ("Basic" or "Advanced") and map it to one of these primary categories: "Technical Skill", "Leadership", "Behavioral", or "Project-Specific".
-                
-                Output your response EXCLUSIVELY as a valid JSON object. Do not include introductory text, markdown code blocks (like ```json), or explanatory notes. Follow this JSON schema exactly:
-                
-                {
-                  "questions": [
+                    OUTPUT REQUIREMENT:
+                    You must generate a MINIMUM of 10 and a MAXIMUM of 20 distinct interview questions. 
+                    
+                    For each question, you must assign a difficulty level ("Basic" or "Advanced") and map it to one of these primary categories: "Technical Skill", "Leadership", "Behavioral", or "Project-Specific".
+                    
+                    Output your response EXCLUSIVELY as a valid JSON object. Do not include introductory text, markdown code blocks (like ```json), or explanatory notes. Follow this JSON schema exactly:
+                    
                     {
-                      "question": "The actual question text here"
+                      "questions": [
+                        {
+                          "question": "The actual question text here",
+                          "difficulty": "Basic or Advanced",
+                          "category": "Technical Skill, Leadership, Behavioral, or Project-Specific"
+                        }
+                      ]
                     }
-                  ]
-                }
-               
-                CRITICAL RULES FOR GENERATION:
-                1. "Basic" questions should verify core competencies, standard tools, and fundamental behaviors mentioned.
-                2. "Advanced" questions should test edge cases, architectural decisions, conflict management, or scale limits based on their senior-level claims.
-                3. Keep generating items sequentially until you have populated at least 10-20 distinct objects in the array. Do not truncate the list.
-            """.trimIndent()
+                   
+                    CRITICAL RULES FOR GENERATION:
+                    1. "Basic" questions should verify core competencies, standard tools, and fundamental behaviors mentioned.
+                    2. "Advanced" questions should test edge cases, architectural decisions, conflict management, or scale limits based on their senior-level claims.
+                    3. Keep generating items sequentially until you have populated at least 10-20 distinct objects in the array. Do not truncate the list.
+                """.trimIndent()
 
-            _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
-            gemmaLiteRTHelper.generateResponse(
-                prompt = message,
-                images = images,
-                onPartialResult = { result ->
-                    _uiState.update { it.copy(generatedQuestions = it.generatedQuestions + result) }
-                },
-                onDone = {
-                    _uiState.update { it.copy(isGenerating = false) }
-                    parseGeneratedQuestions(_uiState.value.generatedQuestions)
-                },
-                onError = { error ->
-                    _uiState.update { it.copy(isGenerating = false) }
-                }
-            )
+                gemmaLiteRTHelper.generateResponse(
+                    prompt = message,
+                    images = images,
+                    onPartialResult = { result ->
+                        _uiState.update { it.copy(generatedQuestions = it.generatedQuestions + result) }
+                    },
+                    onDone = {
+                        _uiState.update { it.copy(isGenerating = false) }
+                        parseGeneratedQuestions(_uiState.value.generatedQuestions)
+                    },
+                    onError = { error ->
+                        _uiState.update { it.copy(isGenerating = false) }
+                    }
+                )
+            } catch (e: Throwable) {
+                e.printStackTrace()
+                _uiState.update { it.copy(isGenerating = false) }
+            }
         }
     }
 
@@ -155,9 +159,11 @@ class ScanViewModel @Inject constructor(
                     val questionsArray = jsonObject.getJSONArray("questions")
                     for (i in 0 until questionsArray.length()) {
                         val qObj = questionsArray.getJSONObject(i)
-                        val question = qObj.optString("question", "")
+                        val question = qObj.optString("question", "").trim().removeSurrounding("\"").trim()
+                        val difficulty = qObj.optString("difficulty", "")
+                        val category = qObj.optString("category", "")
                         if (question.isNotEmpty()) {
-                            parsedList.add(ParsedQuestion(question = question))
+                            parsedList.add(ParsedQuestion(question = question, difficulty = difficulty, category = category))
                         }
                     }
                 }
@@ -177,9 +183,11 @@ class ScanViewModel @Inject constructor(
                 if (questionsArray != null) {
                     for (i in 0 until questionsArray.length()) {
                         val qObj = questionsArray.getJSONObject(i)
-                        val question = qObj.optString("question", "")
+                        val question = qObj.optString("question", "").trim().removeSurrounding("\"").trim()
+                        val difficulty = qObj.optString("difficulty", "")
+                        val category = qObj.optString("category", "")
                         if (question.isNotEmpty()) {
-                            parsedList.add(ParsedQuestion(question = question))
+                            parsedList.add(ParsedQuestion(question = question, difficulty = difficulty, category = category))
                         }
                     }
                 }
@@ -189,13 +197,13 @@ class ScanViewModel @Inject constructor(
                 _uiState.update { it.copy(parsedQuestions = parsedList) }
             } else {
                 // Fallback: If parsing totally fails, at least show the raw text as one big question so user sees something happened
-                parsedList.add(ParsedQuestion(question = jsonString))
+                parsedList.add(ParsedQuestion(question = jsonString, difficulty = "Unknown", category = "Unknown"))
                 _uiState.update { it.copy(parsedQuestions = parsedList) }
             }
         } catch (e: Exception) {
             e.printStackTrace()
             // Fallback on exception
-            val fallbackList = listOf(ParsedQuestion(question = jsonString))
+            val fallbackList = listOf(ParsedQuestion(question = jsonString, difficulty = "Unknown", category = "Unknown"))
             _uiState.update { it.copy(parsedQuestions = fallbackList) }
         }
     }
@@ -207,9 +215,15 @@ class ScanViewModel @Inject constructor(
                 val mimeType = context.contentResolver.getType(uri)
                 if (mimeType?.startsWith("image/") == true) {
                     val inputStream = context.contentResolver.openInputStream(uri)
-                    val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                    var bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
                     inputStream?.close()
                     if (bitmap != null) {
+                        val maxWidth = 1024
+                        if (bitmap.width > maxWidth) {
+                            val ratio = maxWidth.toFloat() / bitmap.width
+                            val scaledHeight = (bitmap.height * ratio).toInt()
+                            bitmap = Bitmap.createScaledBitmap(bitmap, maxWidth, scaledHeight, true)
+                        }
                         bitmaps.add(bitmap)
                     }
                 } else {

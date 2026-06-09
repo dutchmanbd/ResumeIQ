@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 data class ParsedQuestion(
     val id: String = java.util.UUID.randomUUID().toString(),
     val question: String,
+    val difficulty: String = "",
+    val category: String = "",
     val isSelected: Boolean = true
 )
 

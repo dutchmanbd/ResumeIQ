@@ -44,6 +44,7 @@ class GemmaLiteRTHelper(
                 backend = textBackend,
                 visionBackend = visionBackend,
                 maxNumTokens = 32000,
+                maxNumImages = 10,
                 cacheDir = context.getExternalFilesDir(null)?.absolutePath
             )
 

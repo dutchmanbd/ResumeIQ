@@ -16,19 +16,14 @@ class MainViewModel @Inject constructor(
     private val fileStorage: FileStorage
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(MainUiState())
+    private val _uiState = MutableStateFlow(MainUiState(
+        isModelDownloaded = userFactory.isModelDownloaded,
+        isSkip = userFactory.isSkip
+    ))
     val uiState: StateFlow<MainUiState>
         get() = _uiState.asStateFlow()
 
 
-    init {
-        _uiState.update { state ->
-            state.copy(
-                isModelDownloaded = userFactory.isModelDownloaded,
-                isSkip = userFactory.isSkip
-            )
-        }
-    }
 
     fun onEvent(event: MainEvent) {
         when (event) {
