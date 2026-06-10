@@ -38,6 +38,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.graphicsLayer
@@ -51,21 +52,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import androidx.compose.runtime.LaunchedEffect
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
+import com.dutchman.resumeiq.domain.util.rememberSharedBackStackEntry
 import com.dutchman.resumeiq.presentation.features.scan.preview.QuestionPreviewScreen
+import com.ramcosta.composedestinations.generated.destinations.QuestionPreviewScreenDestination
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
 fun ScanScreen(
     navigator: DestinationsNavigator,
-    viewModel: ScanViewModel = hiltViewModel()
+    navController: NavController,
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val viewModel: ScanViewModel = hiltViewModel(navController.rememberSharedBackStackEntry())
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val launcher = rememberLauncherForActivityResult(
@@ -79,11 +84,11 @@ fun ScanScreen(
     var selectedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
     val selectedPages = remember { mutableStateListOf<Int>(0) } // Default page 1 (index 0) selected
 
-//    LaunchedEffect(uiState.parsedQuestions) {
-//        if (uiState.parsedQuestions.isNotEmpty()) {
-//            navigator.navigate(QuestionPreviewScreenDestination)
-//        }
-//    }
+    LaunchedEffect(uiState.parsedQuestions) {
+        if (uiState.parsedQuestions.isNotEmpty()) {
+            navigator.navigate(QuestionPreviewScreenDestination)
+        }
+    }
 
     if (selectedImageBitmap != null) {
         Dialog(onDismissRequest = { selectedImageBitmap = null }) {
@@ -127,234 +132,308 @@ fun ScanScreen(
         }
     }
 
-    if(uiState.parsedQuestions.isNotEmpty()){
-        QuestionPreviewScreen(
-            navigator = navigator,
-            viewModel = viewModel
-        )
-    } else {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("ResumeIQ", fontWeight = FontWeight.Bold, color = Color(0xFF104AAB), fontSize = 20.sp) },
-                    navigationIcon = {
-                        IconButton(onClick = { /*TODO*/ }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF104AAB))
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "ResumeIQ",
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF104AAB),
+                        fontSize = 20.sp
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { /*TODO*/ }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color(0xFF104AAB)
+                        )
+                    }
+                },
+                actions = {},
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF8F9FA))
+            )
+        },
+        containerColor = Color(0xFFF8F9FA)
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Extract Questions from Resume",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1A202C),
+                lineHeight = 32.sp
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Select how you want to provide your professional experience for analysis.",
+                fontSize = 14.sp,
+                color = Color(0xFF4A5568),
+                lineHeight = 20.sp
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OptionCard(
+                onClick = { launcher.launch(arrayOf("application/pdf", "image/*")) },
+                icon = {
+                    Surface(
+                        color = Color(0xFF1661D7),
+                        shape = CircleShape,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Upload,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
                         }
-                    },
-                    actions = {},
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF8F9FA))
-                )
-            },
-            containerColor = Color(0xFFF8F9FA)
-        ) { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = 16.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
+                    }
+                },
+                title = "Upload Resume",
+                subtitle = "PDF or Image"
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OptionCard(
+                onClick = { /* Handle camera scan */ },
+                icon = {
+                    Surface(
+                        color = Color(0xFF86F286),
+                        shape = CircleShape,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.CameraAlt,
+                                contentDescription = null,
+                                tint = Color(0xFF1A5A1A)
+                            )
+                        }
+                    }
+                },
+                title = "Scan Resume",
+                subtitle = "Point camera at document"
+            )
+
+            if (uiState.showPreview) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Description,
+                        contentDescription = null,
+                        tint = Color(0xFF1661D7),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Resume Preview:", fontSize = 16.sp, color = Color(0xFF1A202C))
+                        Text(
+                            uiState.fileName.ifEmpty { "resume_final_v2.pdf" },
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1A202C)
+                        )
+                    }
+                    Surface(
+                        color = Color(0xFFE2E8F0),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                uiState.pageCount.toString(),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.DarkGray
+                            )
+                            Text("Pages", fontSize = 10.sp, color = Color.DarkGray)
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "Extract Questions from Resume",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1A202C),
-                    lineHeight = 32.sp
-                )
+                if (uiState.isProcessing) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Color(0xFF1661D7))
+                    }
+                } else if (uiState.previewImages.isNotEmpty()) {
+                    val images = uiState.previewImages
+                    images.chunked(2).forEachIndexed { chunkIndex, chunk ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            for (i in 0 until 2) {
+                                val imageIndex = chunkIndex * 2 + i
+                                val bitmap = chunk.getOrNull(i)
+                                val isSelected = selectedPages.contains(imageIndex)
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Select how you want to provide your professional experience for analysis.",
-                    fontSize = 14.sp,
-                    color = Color(0xFF4A5568),
-                    lineHeight = 20.sp
-                )
+                                if (bitmap != null) {
+                                    PagePreviewCard(
+                                        modifier = Modifier.weight(1f),
+                                        pageNumber = imageIndex + 1,
+                                        isSelected = isSelected,
+                                        bitmap = bitmap,
+                                        onClick = { selectedImageBitmap = bitmap },
+                                        onLongClick = {
+                                            if (selectedPages.contains(imageIndex)) {
+                                                selectedPages.remove(imageIndex)
+                                            } else {
+                                                selectedPages.add(imageIndex)
+                                            }
+                                        }
+                                    )
+                                } else if (imageIndex < uiState.pageCount.coerceAtMost(10)) {
+                                    // Placeholder if image is missing but it's within count
+                                    PagePreviewCard(
+                                        modifier = Modifier.weight(1f),
+                                        pageNumber = imageIndex + 1,
+                                        isSelected = false,
+                                        bitmap = null,
+                                        onClick = {},
+                                        onLongClick = {}
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                OptionCard(
-                    onClick = { launcher.launch(arrayOf("application/pdf", "image/*")) },
-                    icon = {
-                        Surface(
-                            color = Color(0xFF1661D7),
-                            shape = CircleShape,
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Upload, contentDescription = null, tint = Color.White)
-                            }
-                        }
-                    },
-                    title = "Upload Resume",
-                    subtitle = "PDF or Image"
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OptionCard(
-                    onClick = { /* Handle camera scan */ },
-                    icon = {
-                        Surface(
-                            color = Color(0xFF86F286),
-                            shape = CircleShape,
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color(0xFF1A5A1A))
-                            }
-                        }
-                    },
-                    title = "Scan Resume",
-                    subtitle = "Point camera at document"
-                )
-
-                if (uiState.showPreview) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFF1661D7), modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Resume Preview:", fontSize = 16.sp, color = Color(0xFF1A202C))
-                            Text(uiState.fileName.ifEmpty { "resume_final_v2.pdf" }, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A202C))
-                        }
-                        Surface(
-                            color = Color(0xFFE2E8F0),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(uiState.pageCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
-                                Text("Pages", fontSize = 10.sp, color = Color.DarkGray)
-                            }
+                Surface(
+                    color = Color(0xFFEBF3FF),
+                    border = BorderStroke(1.dp, Color(0xFFB0D0FF)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(modifier = Modifier.padding(16.dp)) {
+                        Icon(
+                            Icons.Outlined.AutoAwesome,
+                            contentDescription = null,
+                            tint = Color(0xFF1661D7),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                "AI RECOMMENDATION",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1A202C)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "We recommend selecting Page 1 and 2 as they contain your primary work experience and key technical achievements.",
+                                fontSize = 13.sp,
+                                color = Color(0xFF2D3748),
+                                lineHeight = 18.sp
+                            )
                         }
                     }
+                }
 
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = {
+                        val selectedBitmaps = uiState.previewImages.filterIndexed { index, _ ->
+                            selectedPages.contains(index)
+                        }
+                        viewModel.onEvent(ScanEvent.OnGenerateQuestionsClicked(selectedBitmaps))
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F62FE)),
+                    enabled = !uiState.isGenerating
+                ) {
+                    if (uiState.isGenerating) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            Icons.Outlined.Psychology,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        if (uiState.isGenerating) "Generating..." else "Generate Questions",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                if (uiState.generatedQuestions.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    if (uiState.isProcessing) {
-                        Box(modifier = Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = Color(0xFF1661D7))
-                        }
-                    } else if (uiState.previewImages.isNotEmpty()) {
-                        val images = uiState.previewImages
-                        images.chunked(2).forEachIndexed { chunkIndex, chunk ->
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                for (i in 0 until 2) {
-                                    val imageIndex = chunkIndex * 2 + i
-                                    val bitmap = chunk.getOrNull(i)
-                                    val isSelected = selectedPages.contains(imageIndex)
-
-                                    if (bitmap != null) {
-                                        PagePreviewCard(
-                                            modifier = Modifier.weight(1f),
-                                            pageNumber = imageIndex + 1,
-                                            isSelected = isSelected,
-                                            bitmap = bitmap,
-                                            onClick = { selectedImageBitmap = bitmap },
-                                            onLongClick = {
-                                                if (selectedPages.contains(imageIndex)) {
-                                                    selectedPages.remove(imageIndex)
-                                                } else {
-                                                    selectedPages.add(imageIndex)
-                                                }
-                                            }
-                                        )
-                                    } else if (imageIndex < uiState.pageCount.coerceAtMost(10)) {
-                                        // Placeholder if image is missing but it's within count
-                                        PagePreviewCard(
-                                            modifier = Modifier.weight(1f),
-                                            pageNumber = imageIndex + 1,
-                                            isSelected = false,
-                                            bitmap = null,
-                                            onClick = {},
-                                            onLongClick = {}
-                                        )
-                                    } else {
-                                        Spacer(modifier = Modifier.weight(1f))
-                                    }
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(12.dp))
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
                     Surface(
-                        color = Color(0xFFEBF3FF),
-                        border = BorderStroke(1.dp, Color(0xFFB0D0FF)),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(modifier = Modifier.padding(16.dp)) {
-                            Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = Color(0xFF1661D7), modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("AI RECOMMENDATION", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A202C))
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text("We recommend selecting Page 1 and 2 as they contain your primary work experience and key technical achievements.", fontSize = 13.sp, color = Color(0xFF2D3748), lineHeight = 18.sp)
-                            }
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                "Generated Questions:",
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1A202C)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                uiState.generatedQuestions,
+                                fontSize = 14.sp,
+                                color = Color(0xFF2D3748)
+                            )
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Button(
-                        onClick = {
-                            val selectedBitmaps = uiState.previewImages.filterIndexed { index, _ -> selectedPages.contains(index) }
-                            viewModel.onEvent(ScanEvent.OnGenerateQuestionsClicked(selectedBitmaps))
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F62FE)),
-                        enabled = !uiState.isGenerating
-                    ) {
-                        if (uiState.isGenerating) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Outlined.Psychology, contentDescription = null, modifier = Modifier.size(20.dp))
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (uiState.isGenerating) "Generating..." else "Generate Questions", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    if (uiState.generatedQuestions.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Surface(
-                            color = Color.White,
-                            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Generated Questions:", fontWeight = FontWeight.Bold, color = Color(0xFF1A202C))
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(uiState.generatedQuestions, fontSize = 14.sp, color = Color(0xFF2D3748))
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        "Estimated analysis time: 15 seconds",
-                        fontSize = 11.sp,
-                        color = Color.Gray,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    )
-
-                    Spacer(modifier = Modifier.height(32.dp))
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    "Estimated analysis time: 15 seconds",
+                    fontSize = 11.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
+
 
 }
 
@@ -369,7 +448,9 @@ fun OptionCard(
         color = Color(0xFFF4F6F9),
         border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth().clickable { onClick() }
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
     ) {
         Column(
             modifier = Modifier.padding(vertical = 24.dp),
@@ -377,7 +458,12 @@ fun OptionCard(
         ) {
             icon()
             Spacer(modifier = Modifier.height(16.dp))
-            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A202C))
+            Text(
+                title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF1A202C)
+            )
             Spacer(modifier = Modifier.height(4.dp))
             Text(subtitle, fontSize = 12.sp, color = Color.Gray)
         }
@@ -400,7 +486,7 @@ fun PagePreviewCard(
     val hasContent = bitmap != null
     val borderColor = if (isSelected && hasContent) Color(0xFF1661D7) else Color.Transparent
     val borderWidth = if (isSelected && hasContent) 2.dp else 0.dp
-    
+
     Box(
         modifier = modifier
             .height(160.dp)
@@ -434,10 +520,15 @@ fun PagePreviewCard(
                 contentAlignment = Alignment.Center
             ) {
                 if (isSelected) {
-                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
                 }
             }
-            
+
             // Page text at bottom
             Box(
                 modifier = Modifier
@@ -447,14 +538,19 @@ fun PagePreviewCard(
                     .padding(vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Page $pageNumber", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "Page $pageNumber",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         } else {
             // Empty state placeholder text
             Text(
-                "No Page", 
-                modifier = Modifier.align(Alignment.Center), 
-                color = Color.Gray, 
+                "No Page",
+                modifier = Modifier.align(Alignment.Center),
+                color = Color.Gray,
                 fontSize = 12.sp
             )
         }

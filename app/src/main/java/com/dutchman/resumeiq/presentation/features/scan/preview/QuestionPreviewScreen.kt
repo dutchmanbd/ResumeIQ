@@ -20,7 +20,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
+import com.dutchman.resumeiq.domain.util.rememberSharedBackStackEntry
 import com.dutchman.resumeiq.presentation.features.scan.ParsedQuestion
 import com.dutchman.resumeiq.presentation.features.scan.ScanEvent
 import com.dutchman.resumeiq.presentation.features.scan.ScanViewModel
@@ -29,13 +32,15 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Destination<RootGraph>
 @Composable
 fun QuestionPreviewScreen(
     navigator: DestinationsNavigator,
-    viewModel: ScanViewModel
+    navController: NavController
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    
+    val viewModel: ScanViewModel = hiltViewModel(navController.rememberSharedBackStackEntry())
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
     Scaffold(
         topBar = {
             TopAppBar(
