@@ -42,6 +42,8 @@ class GemmaInferenceHelper(
         val builder = LlmInference.LlmInferenceOptions.builder()
             .setModelPath(modelPath)
             .setMaxTokens(MAX_TOKENS)
+//            .setMaxTopK(64)
+
         if (supportsVision) {
             builder.setMaxNumImages(MAX_NUM_IMAGES)
         }
@@ -140,7 +142,7 @@ class GemmaInferenceHelper(
     }
 
     companion object {
-        private const val MAX_TOKENS = 1024
-        private const val MAX_NUM_IMAGES = 4
+        private const val MAX_TOKENS = 32000 //1024
+        private const val MAX_NUM_IMAGES = 4 //4
     }
 }

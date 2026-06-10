@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -65,7 +66,7 @@ class ScanViewModel @Inject constructor(
     private fun generateQuestions(images: List<Bitmap>) {
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
-            
+
             try {
                 val file = fileStorage.getDownloadedFile()
                 if (file != null) {
@@ -75,30 +76,57 @@ class ScanViewModel @Inject constructor(
                     return@launch
                 }
 
-                val message = """
-                    You are an expert technical interviewer and executive recruiter. Your task is to analyze the text inside the provided resume image and generate a robust question bank for the interviewer.
+//                val message = """
+//                    You are an expert technical interviewer and executive recruiter. Your task is to analyze the text inside the provided resume image and generate a robust question bank for the interviewer.
+//
+//                    OUTPUT REQUIREMENT:
+//                    You must generate a MINIMUM of 10 and a MAXIMUM of 20 distinct interview questions.
+//
+//                    For each question, you must assign a difficulty level ("Basic" or "Advanced") and map it to one of these primary categories: "Technical Skill", "Leadership", "Behavioral", or "Project-Specific".
+//
+//                    Output your response EXCLUSIVELY as a valid JSON object. Do not include introductory text, markdown code blocks (like ```json), or explanatory notes. Follow this JSON schema exactly:
+//
+//                    {
+//                      "questions": [
+//                        {
+//                          "question": "The actual question text here",
+//                          "difficulty": "Basic or Advanced",
+//                          "category": "Technical Skill, Leadership, Behavioral, or Project-Specific"
+//                        }
+//                      ]
+//                    }
+//
+//                    CRITICAL RULES FOR GENERATION:
+//                    1. "Basic" questions should verify core competencies, standard tools, and fundamental behaviors mentioned.
+//                    2. "Advanced" questions should test edge cases, architectural decisions, conflict management, or scale limits based on their senior-level claims.
+//                    3. Keep generating items sequentially until you have populated at least 10-20 distinct objects in the array. Do not truncate the list.
+//                """.trimIndent()
 
-                    OUTPUT REQUIREMENT:
-                    You must generate a MINIMUM of 10 and a MAXIMUM of 20 distinct interview questions. 
+                val message = """
+                    You are an expert technical interviewer and recruiter analyzing the attached resume image.
+
+                    TASK:
+                    Generate a highly professional, real-world interview question bank based ONLY on the candidate's experience, role, and skills shown in the resume. You must output exactly 20 distinct questions.
+
+                    QUESTION STYLE:
+                    Create realistic, scenario-based, and technical questions tailored to their specific industry and seniority. Questions should be concise (1-2 sentences maximum) but challenging, reflecting actual interviews for their target role.
+
+                    JSON OUTPUT FORMAT:
+                    Output EXCLUSIVELY a raw JSON object. Do not include markdown tags like ```json, do not write code blocks, and do not write closing/opening chat greetings. Use this exact compact schema:
+
+                    {"questions": [{"c": "Skill | Lead | Behav", "l": "Basic | Adv", "q": "The professional interview question."}]}
                     
-                    For each question, you must assign a difficulty level ("Basic" or "Advanced") and map it to one of these primary categories: "Technical Skill", "Leadership", "Behavioral", or "Project-Specific".
+                    FIELD DESCRIPTIONS:
+                    - questions: The array containing the generated questions.
+                    - c (Category): Must be exactly one of: "Skill" (Technical/Core Skills), "Lead" (Leadership/Mentoring), "Behav" (Behavioral/Scenario).
+                    - l (Level): Must be exactly one of: "Basic" or "Adv".
+                    - q (Question): The actual question text.
                     
-                    Output your response EXCLUSIVELY as a valid JSON object. Do not include introductory text, markdown code blocks (like ```json), or explanatory notes. Follow this JSON schema exactly:
-                    
-                    {
-                      "questions": [
-                        {
-                          "question": "The actual question text here",
-                          "difficulty": "Basic or Advanced",
-                          "category": "Technical Skill, Leadership, Behavioral, or Project-Specific"
-                        }
-                      ]
-                    }
-                   
-                    CRITICAL RULES FOR GENERATION:
-                    1. "Basic" questions should verify core competencies, standard tools, and fundamental behaviors mentioned.
-                    2. "Advanced" questions should test edge cases, architectural decisions, conflict management, or scale limits based on their senior-level claims.
-                    3. Keep generating items sequentially until you have populated at least 10-20 distinct objects in the array. Do not truncate the list.
+                    GENERATION REQUIREMENTS:
+                    1. Generate 5 "Skill" questions (focus on their core tools/languages).
+                    2. Generate 5 "Lead" questions (focus on their team impact or management).
+                    3. Generate 5 "Behav" questions (focus on real-world problem solving).
+                    Ensure exactly 20 items are output in the "questions" array.
                 """.trimIndent()
 
                 gemmaInferenceHelper.generateResponse(
@@ -107,9 +135,11 @@ class ScanViewModel @Inject constructor(
                 ).collect { result ->
                     _uiState.update { it.copy(generatedQuestions = it.generatedQuestions + result) }
                 }
-                
+
                 _uiState.update { it.copy(isGenerating = false) }
-                parseGeneratedQuestions(_uiState.value.generatedQuestions)
+                val jsonString = _uiState.value.generatedQuestions;
+                Log.d("ScanViewModel", "generateQuestions: $jsonString")
+                parseGeneratedQuestions(jsonString)
             } catch (e: Throwable) {
                 e.printStackTrace()
                 _uiState.update { it.copy(isGenerating = false) }
@@ -148,15 +178,32 @@ class ScanViewModel @Inject constructor(
                     }
                 }
 
-                if (jsonObject != null && jsonObject.has("questions")) {
-                    val questionsArray = jsonObject.getJSONArray("questions")
+                if (jsonObject != null && (jsonObject.has("q_list") || jsonObject.has("questions"))) {
+                    val questionsArray =
+                        if (jsonObject.has("q_list")) jsonObject.getJSONArray("q_list") else jsonObject.getJSONArray(
+                            "questions"
+                        )
                     for (i in 0 until questionsArray.length()) {
                         val qObj = questionsArray.getJSONObject(i)
-                        val question = qObj.optString("question", "").trim().removeSurrounding("\"").trim()
-                        val difficulty = qObj.optString("difficulty", "")
-                        val category = qObj.optString("category", "")
+                        val question = if (qObj.has("q")) qObj.optString("q", "").trim()
+                            .removeSurrounding("\"").trim() else qObj.optString("question", "")
+                            .trim().removeSurrounding("\"").trim()
+                        val difficulty = if (qObj.has("l")) qObj.optString("l", "") else if (qObj.has("d")) qObj.optString(
+                            "d",
+                            ""
+                        ) else qObj.optString("difficulty", "")
+                        val category = if (qObj.has("c")) qObj.optString(
+                            "c",
+                            ""
+                        ) else qObj.optString("category", "")
                         if (question.isNotEmpty()) {
-                            parsedList.add(ParsedQuestion(question = question, difficulty = difficulty, category = category))
+                            parsedList.add(
+                                ParsedQuestion(
+                                    question = question,
+                                    difficulty = difficulty,
+                                    category = category
+                                )
+                            )
                         }
                     }
                 }
@@ -176,11 +223,25 @@ class ScanViewModel @Inject constructor(
                 if (questionsArray != null) {
                     for (i in 0 until questionsArray.length()) {
                         val qObj = questionsArray.getJSONObject(i)
-                        val question = qObj.optString("question", "").trim().removeSurrounding("\"").trim()
-                        val difficulty = qObj.optString("difficulty", "")
-                        val category = qObj.optString("category", "")
+                        val question = if (qObj.has("q")) qObj.optString("q", "").trim()
+                            .removeSurrounding("\"").trim() else qObj.optString("question", "")
+                            .trim().removeSurrounding("\"").trim()
+                        val difficulty = if (qObj.has("l")) qObj.optString("l", "") else if (qObj.has("d")) qObj.optString(
+                            "d",
+                            ""
+                        ) else qObj.optString("difficulty", "")
+                        val category = if (qObj.has("c")) qObj.optString(
+                            "c",
+                            ""
+                        ) else qObj.optString("category", "")
                         if (question.isNotEmpty()) {
-                            parsedList.add(ParsedQuestion(question = question, difficulty = difficulty, category = category))
+                            parsedList.add(
+                                ParsedQuestion(
+                                    question = question,
+                                    difficulty = difficulty,
+                                    category = category
+                                )
+                            )
                         }
                     }
                 }
@@ -190,13 +251,25 @@ class ScanViewModel @Inject constructor(
                 _uiState.update { it.copy(parsedQuestions = parsedList) }
             } else {
                 // Fallback: If parsing totally fails, at least show the raw text as one big question so user sees something happened
-                parsedList.add(ParsedQuestion(question = jsonString, difficulty = "Unknown", category = "Unknown"))
+                parsedList.add(
+                    ParsedQuestion(
+                        question = jsonString,
+                        difficulty = "Unknown",
+                        category = "Unknown"
+                    )
+                )
                 _uiState.update { it.copy(parsedQuestions = parsedList) }
             }
         } catch (e: Exception) {
             e.printStackTrace()
             // Fallback on exception
-            val fallbackList = listOf(ParsedQuestion(question = jsonString, difficulty = "Unknown", category = "Unknown"))
+            val fallbackList = listOf(
+                ParsedQuestion(
+                    question = jsonString,
+                    difficulty = "Unknown",
+                    category = "Unknown"
+                )
+            )
             _uiState.update { it.copy(parsedQuestions = fallbackList) }
         }
     }

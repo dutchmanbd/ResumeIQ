@@ -154,7 +154,7 @@ fun QuestionCard(question: ParsedQuestion, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "\"${question.question}\"",
+                text = question.question,
                 fontSize = 15.sp,
                 color = textColor,
                 lineHeight = 22.sp
