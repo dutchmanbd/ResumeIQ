@@ -8,5 +8,5 @@ import android.graphics.Bitmap
 sealed interface ScanEvent {
     data class OnFileSelected(val uri: Uri, val context: Context) : ScanEvent
     data class OnGenerateQuestionsClicked(val images: List<Bitmap>) : ScanEvent
-    data class OnQuestionSelected(val id: String) : ScanEvent
+    data class OnQuestionSelected(val id: Long) : ScanEvent
 }

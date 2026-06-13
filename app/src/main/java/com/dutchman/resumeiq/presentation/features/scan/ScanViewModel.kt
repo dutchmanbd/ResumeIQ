@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
+import com.dutchman.resumeiq.domain.models.Question
 import com.dutchman.resumeiq.domain.util.FileStorage
 
 @HiltViewModel
@@ -149,7 +150,7 @@ class ScanViewModel @Inject constructor(
 
     private fun parseGeneratedQuestions(jsonString: String) {
         try {
-            val parsedList = mutableListOf<ParsedQuestion>()
+            val parsedList = mutableListOf<Question>()
 
             // Try to find a JSON object
             val objStart = jsonString.indexOf("{")
@@ -198,7 +199,7 @@ class ScanViewModel @Inject constructor(
                         ) else qObj.optString("category", "")
                         if (question.isNotEmpty()) {
                             parsedList.add(
-                                ParsedQuestion(
+                                Question(
                                     question = question,
                                     difficulty = difficulty,
                                     category = category
@@ -236,7 +237,7 @@ class ScanViewModel @Inject constructor(
                         ) else qObj.optString("category", "")
                         if (question.isNotEmpty()) {
                             parsedList.add(
-                                ParsedQuestion(
+                                Question(
                                     question = question,
                                     difficulty = difficulty,
                                     category = category
@@ -252,7 +253,7 @@ class ScanViewModel @Inject constructor(
             } else {
                 // Fallback: If parsing totally fails, at least show the raw text as one big question so user sees something happened
                 parsedList.add(
-                    ParsedQuestion(
+                    Question(
                         question = jsonString,
                         difficulty = "Unknown",
                         category = "Unknown"
@@ -264,7 +265,7 @@ class ScanViewModel @Inject constructor(
             e.printStackTrace()
             // Fallback on exception
             val fallbackList = listOf(
-                ParsedQuestion(
+                Question(
                     question = jsonString,
                     difficulty = "Unknown",
                     category = "Unknown"

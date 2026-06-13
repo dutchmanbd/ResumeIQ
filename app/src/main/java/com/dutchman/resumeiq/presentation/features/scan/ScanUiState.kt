@@ -1,14 +1,15 @@
 package com.dutchman.resumeiq.presentation.features.scan
 
 import android.graphics.Bitmap
+import com.dutchman.resumeiq.domain.models.Question
 
-data class ParsedQuestion(
-    val id: String = java.util.UUID.randomUUID().toString(),
-    val question: String,
-    val difficulty: String = "",
-    val category: String = "",
-    val isSelected: Boolean = true
-)
+//data class Question(
+//    val id: String = java.util.UUID.randomUUID().toString(),
+//    val question: String,
+//    val difficulty: String = "",
+//    val category: String = "",
+//    val isSelected: Boolean = true
+//)
 
 data class ScanUiState(
     val showPreview: Boolean = false,
@@ -18,5 +19,5 @@ data class ScanUiState(
     val isProcessing: Boolean = false,
     val isGenerating: Boolean = false,
     val generatedQuestions: String = "",
-    val parsedQuestions: List<ParsedQuestion> = emptyList()
+    val parsedQuestions: List<Question> = emptyList()
 )

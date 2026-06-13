@@ -11,7 +11,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,8 +22,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.dutchman.resumeiq.domain.models.Question
 import com.dutchman.resumeiq.domain.util.rememberSharedBackStackEntry
-import com.dutchman.resumeiq.presentation.features.scan.ParsedQuestion
 import com.dutchman.resumeiq.presentation.features.scan.ScanEvent
 import com.dutchman.resumeiq.presentation.features.scan.ScanViewModel
 import com.ramcosta.composedestinations.annotation.Destination
@@ -133,7 +132,7 @@ fun QuestionPreviewScreen(
 }
 
 @Composable
-fun QuestionCard(question: ParsedQuestion, onClick: () -> Unit) {
+fun QuestionCard(question: Question, onClick: () -> Unit) {
     val bgColor = if (question.isSelected) Color(0xFF1661D7) else Color.White
     val textColor = if (question.isSelected) Color.White else Color(0xFF1A202C)
     val borderColor = if (question.isSelected) Color.Transparent else Color(0xFFE2E8F0)
