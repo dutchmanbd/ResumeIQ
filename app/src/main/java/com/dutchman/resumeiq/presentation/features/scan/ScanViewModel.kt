@@ -21,10 +21,14 @@ import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
 import com.dutchman.resumeiq.domain.models.Question
 import com.dutchman.resumeiq.domain.util.FileStorage
 
+import com.dutchman.resumeiq.data.local.dao.QuestionDao
+import com.dutchman.resumeiq.data.local.entity.toEntity
+
 @HiltViewModel
 class ScanViewModel @Inject constructor(
     private val gemmaInferenceHelper: GemmaInferenceHelper,
-    private val fileStorage: FileStorage
+    private val fileStorage: FileStorage,
+    private val questionDao: QuestionDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ScanUiState())
@@ -40,6 +44,19 @@ class ScanViewModel @Inject constructor(
                     if (it.id == event.id) it.copy(isSelected = !it.isSelected) else it
                 }
                 _uiState.update { it.copy(parsedQuestions = updatedQuestions) }
+            }
+            is ScanEvent.OnSaveSelectedQuestions -> saveSelectedQuestions(event.onSaved)
+        }
+    }
+
+    private fun saveSelectedQuestions(onSaved: () -> Unit) {
+        viewModelScope.launch {
+            val selectedQuestions = _uiState.value.parsedQuestions.filter { it.isSelected }
+            if (selectedQuestions.isNotEmpty()) {
+                questionDao.insertQuestions(selectedQuestions.map { it.toEntity() })
+            }
+            withContext(Dispatchers.Main) {
+                onSaved()
             }
         }
     }

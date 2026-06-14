@@ -4,6 +4,9 @@ import android.content.Context
 import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
 import com.dutchman.resumeiq.domain.util.SharedPref
 import com.dutchman.resumeiq.domain.util.UserFactory
+import androidx.room.Room
+import com.dutchman.resumeiq.data.local.AppDatabase
+import com.dutchman.resumeiq.data.local.dao.QuestionDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -33,4 +36,24 @@ object AppModule {
     fun provideGemmaInferenceHelper(
         @ApplicationContext context: Context
     ) = GemmaInferenceHelper(context, supportsVision = true)
+
+    @Provides
+    @Singleton
+    fun provideAppDatabase(
+        @ApplicationContext context: Context
+    ): AppDatabase {
+        return Room.databaseBuilder(
+            context,
+            AppDatabase::class.java,
+            AppDatabase.DATABASE_NAME
+        ).build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideQuestionDao(
+        db: AppDatabase
+    ): QuestionDao {
+        return db.questionDao
+    }
 }

@@ -29,6 +29,7 @@ import com.dutchman.resumeiq.presentation.features.scan.ScanViewModel
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import com.ramcosta.composedestinations.generated.destinations.QuestionScreenDestination
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
@@ -112,7 +113,16 @@ fun QuestionPreviewScreen(
                 }
                 
                 Button(
-                    onClick = { /* Handle add selected questions */ },
+                    onClick = { 
+                        viewModel.onEvent(ScanEvent.OnSaveSelectedQuestions {
+                            // Navigate to QuestionScreen and clear back stack or just navigate
+                            navigator.navigate(QuestionScreenDestination) {
+                                popUpTo(QuestionScreenDestination) {
+                                    inclusive = true
+                                }
+                            }
+                        })
+                    },
                     modifier = Modifier.weight(1f).height(52.dp),
                     shape = RoundedCornerShape(26.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F62FE))

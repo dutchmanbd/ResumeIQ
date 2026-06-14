@@ -18,13 +18,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.getValue
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import com.ramcosta.composedestinations.generated.destinations.QuestionDetailScreenDestination
+import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
-fun QuestionScreen() {
+fun QuestionScreen(
+    navigator: DestinationsNavigator,
+    viewModel: QuestionViewModel = hiltViewModel()
+) {
+    val questions by viewModel.questions.collectAsStateWithLifecycle()
     Scaffold(
         containerColor = Color(0xFFF4F6F9)
     ) { paddingValues ->
@@ -36,76 +47,37 @@ fun QuestionScreen() {
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
-            item {
-                QuestionCard(
-                    tag = "Behavioral",
-                    tagColor = Color(0xFF86F286),
-                    tagTextColor = Color(0xFF1A5A1A),
-                    question = "Tell me about a time you handled conflict with a team member.",
-                    bottomContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                color = Color(0xFFFFF0D4),
-                                shape = CircleShape,
-                                modifier = Modifier.size(24.dp)
+            if (questions.isEmpty()) {
+                item {
+                    Text(
+                        "No questions saved yet. Scan a resume to generate and save questions.",
+                        modifier = Modifier.padding(16.dp),
+                        color = Color.Gray,
+                        fontSize = 16.sp
+                    )
+                }
+            } else {
+                items(questions) { question ->
+                    QuestionCard(
+                        tag = question.category.ifEmpty { "General" },
+                        tagColor = Color(0xFFEBF3FF),
+                        tagTextColor = Color(0xFF1661D7),
+                        question = question.question,
+                        onClick = {
+                            navigator.navigate(QuestionDetailScreenDestination(id = question.id))
+                        },
+                        bottomContent = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFF2A900), modifier = Modifier.size(14.dp))
-                                }
+                                Text(question.difficulty.ifEmpty { "Medium" }, fontSize = 12.sp, color = Color.DarkGray)
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color(0xFF1061E3), modifier = Modifier.size(18.dp))
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("High Frequency", fontSize = 12.sp, color = Color.DarkGray)
                         }
-                    }
-                )
-            }
-            item {
-                QuestionCard(
-                    tag = "Experience",
-                    tagColor = Color(0xFFB58B00),
-                    tagTextColor = Color.White,
-                    question = "Describe the most complex architectural challenge you've solved.",
-                    bottomContent = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Advanced Level", fontSize = 12.sp, color = Color.DarkGray)
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color(0xFF1061E3), modifier = Modifier.size(18.dp))
-                        }
-                    }
-                )
-            }
-            item {
-                QuestionCard(
-                    tag = "Self-Awareness",
-                    tagColor = Color(0xFF86F286),
-                    tagTextColor = Color(0xFF1A5A1A),
-                    question = "What is your greatest professional weakness and how are you addressing it?",
-                    bottomContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E8B57), modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("3 practices completed", fontSize = 12.sp, color = Color.DarkGray)
-                        }
-                    }
-                )
-            }
-            item {
-                QuestionCard(
-                    tag = "Leadership",
-                    tagColor = Color(0xFFB58B00),
-                    tagTextColor = Color.White,
-                    question = "Tell me about a time you led a team through a period of ambiguity.",
-                    bottomContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircleTag("L")
-                            Spacer(modifier = Modifier.width(6.dp))
-                            CircleTag("6")
-                        }
-                    }
-                )
+                    )
+                }
             }
         }
     }
@@ -117,13 +89,14 @@ fun QuestionCard(
     tagColor: Color,
     tagTextColor: Color = Color.Black,
     question: String,
+    onClick: () -> Unit = {},
     bottomContent: @Composable () -> Unit
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(12.dp),
         border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
