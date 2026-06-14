@@ -18,8 +18,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ramcosta.composedestinations.annotation.Destination
@@ -36,10 +41,22 @@ fun QuestionScreen(
     viewModel: QuestionViewModel = hiltViewModel()
 ) {
     val questions by viewModel.questions.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
+    val lastSavedIndex by viewModel.lastQuestionIndex.collectAsStateWithLifecycle()
+
+    LaunchedEffect(questions.size) {
+        if (questions.isNotEmpty() && listState.firstVisibleItemIndex == 0) {
+            if (lastSavedIndex > 0 && lastSavedIndex < questions.size) {
+                listState.scrollToItem(lastSavedIndex)
+            }
+        }
+    }
+
     Scaffold(
         containerColor = Color(0xFFF4F6F9)
     ) { paddingValues ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
@@ -57,13 +74,16 @@ fun QuestionScreen(
                     )
                 }
             } else {
-                items(questions) { question ->
+                itemsIndexed(questions) { index, question ->
                     QuestionCard(
                         tag = question.category.ifEmpty { "General" },
                         tagColor = Color(0xFFEBF3FF),
                         tagTextColor = Color(0xFF1661D7),
                         question = question.question,
+                        isLastRead = index == lastSavedIndex && index > 0,
                         onClick = {
+//                            val newIndex = listState.firstVisibleItemIndex
+                            viewModel.saveLastQuestionIndex(index)
                             navigator.navigate(QuestionDetailScreenDestination(id = question.id))
                         },
                         bottomContent = {
@@ -72,8 +92,17 @@ fun QuestionScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(question.difficulty.ifEmpty { "Medium" }, fontSize = 12.sp, color = Color.DarkGray)
-                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color(0xFF1061E3), modifier = Modifier.size(18.dp))
+                                Text(
+                                    question.difficulty.ifEmpty { "Medium" },
+                                    fontSize = 12.sp,
+                                    color = Color.DarkGray
+                                )
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = Color(0xFF1061E3),
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
                     )
@@ -89,14 +118,24 @@ fun QuestionCard(
     tagColor: Color,
     tagTextColor: Color = Color.Black,
     question: String,
+    isLastRead: Boolean = false,
     onClick: () -> Unit = {},
     bottomContent: @Composable () -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.background
+        ),
         shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-        modifier = Modifier.fillMaxWidth().clickable { onClick() }
+        border = BorderStroke(
+            1.dp,
+            if (isLastRead)
+                Color(0xFF1661D7) else
+                MaterialTheme.colorScheme.background
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -108,15 +147,35 @@ fun QuestionCard(
                     color = tagColor,
                     shape = RoundedCornerShape(6.dp)
                 ) {
-                    Text(tag, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 10.sp, color = tagTextColor, fontWeight = FontWeight.Bold)
+                    Text(
+                        tag,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        fontSize = 10.sp,
+                        color = tagTextColor,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(14.dp))
-            Text(question, fontSize = 17.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = Color(0xFF1A202C))
+            Text(
+                question,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 24.sp,
+                color = Color(0xFF1A202C)
+            )
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider(color = Color(0xFFEDF2F7), thickness = 1.dp)
             Spacer(modifier = Modifier.height(14.dp))
             bottomContent()
+//            if (isLastRead) {
+//                Spacer(modifier = Modifier.height(16.dp))
+//                HorizontalDivider(
+//                    modifier = Modifier.fillMaxWidth(0.5f),
+//                    color = Color(0xFF1661D7),
+//                    thickness = 3.dp
+//                )
+//            }
         }
     }
 }
@@ -130,22 +189,55 @@ fun AITailoredCard() {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Lightbulb, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                Icon(
+                    Icons.Default.Lightbulb,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("AI Tailored", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "AI Tailored",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
             Spacer(modifier = Modifier.height(14.dp))
-            Text("How do you align your engineering decisions with long-term business goals?", color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Bold, lineHeight = 28.sp)
+            Text(
+                "How do you align your engineering decisions with long-term business goals?",
+                color = Color.White,
+                fontSize = 21.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 28.sp
+            )
             Spacer(modifier = Modifier.height(12.dp))
-            Text("Based on your recent resume scan for the Google Staff Engineer role.", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, lineHeight = 20.sp)
+            Text(
+                "Based on your recent resume scan for the Google Staff Engineer role.",
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 13.sp,
+                lineHeight = 20.sp
+            )
             Spacer(modifier = Modifier.height(18.dp))
             Row {
                 Surface(color = Color(0xFF4B8DF8), shape = RoundedCornerShape(16.dp)) {
-                    Text("Strategic", modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                    Text(
+                        "Strategic",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        fontSize = 12.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Surface(color = Color(0xFF4B8DF8), shape = RoundedCornerShape(16.dp)) {
-                    Text("Leadership", modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                    Text(
+                        "Leadership",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        fontSize = 12.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }

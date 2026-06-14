@@ -48,8 +48,7 @@ fun MainScreen(
     val currentRoute = navBackStackEntry?.destination?.route
 
     val showBottomBar = currentRoute == QuestionScreenDestination.route ||
-            currentRoute == MoreScreenDestination.route ||
-            currentRoute == ScanScreenDestination.route
+            currentRoute == MoreScreenDestination.route
 
     Scaffold(
         bottomBar = {

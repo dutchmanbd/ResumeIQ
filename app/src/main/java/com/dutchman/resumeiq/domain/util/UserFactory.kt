@@ -7,6 +7,7 @@ class UserFactory(
         private const val PREF_IS_SKIP = "pref_is_skip"
         private const val PREF_MODEL_ID = "pref_model_id"
         private const val PREF_IS_MODEL_DOWNLOADED = "pref_is_model_downloaded"
+        private const val PREF_LAST_QUESTION_INDEX = "pref_last_question_index"
     }
 
     val isSkip: Boolean
@@ -40,5 +41,12 @@ class UserFactory(
 
     fun removeDownloadId(fileName: String) {
         sharedPref.write("download_id_$fileName", -1L) // Assuming -1 means no download
+    }
+
+    val lastQuestionIndex: Int
+        get() = sharedPref.read(PREF_LAST_QUESTION_INDEX, 0)
+
+    fun saveLastQuestionIndex(index: Int) {
+        sharedPref.write(PREF_LAST_QUESTION_INDEX, index)
     }
 }

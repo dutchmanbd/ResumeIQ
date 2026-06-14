@@ -138,18 +138,18 @@ fun ScanScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "ResumeIQ",
+                        "Generate Question",
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF104AAB),
                         fontSize = 20.sp
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { /*TODO*/ }) {
+                    IconButton(onClick = {
+                        navigator.navigateUp()
+                    }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color(0xFF104AAB)
+                            contentDescription = "Back"
                         )
                     }
                 },
