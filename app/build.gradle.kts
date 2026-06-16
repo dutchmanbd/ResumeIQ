@@ -9,7 +9,7 @@ plugins {
 
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.compose.compiler)
-//    alias(libs.plugins.google.services)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -81,7 +81,7 @@ dependencies {
 
     implementation(platform(libs.compose.bom))
     implementation(libs.bundles.compose)
-    implementation("androidx.compose.material:material")
+    implementation(libs.androidx.material)
     implementation(libs.compose.google.fonts)
     implementation(libs.bundles.navigation)
 
@@ -107,7 +107,7 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.opencv)
 
-    implementation("com.google.code.gson:gson:2.10.1")
+    implementation(libs.gson)
 
 //    implementation(libs.vosk.android)
 

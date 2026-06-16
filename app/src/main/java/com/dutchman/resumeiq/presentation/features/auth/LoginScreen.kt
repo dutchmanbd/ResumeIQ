@@ -40,6 +40,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.CustomCredential
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import android.util.Log
 import com.dutchman.resumeiq.R
 import com.dutchman.resumeiq.presentation.activities.MainEvent
 import com.dutchman.resumeiq.presentation.activities.MainViewModel
@@ -58,13 +69,13 @@ fun LoginScreen(
 ) {
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     LaunchedEffect(
-        key1 = uiState.isSkip,
-        key2 = uiState.isLoggedIn,
-        key3 = uiState.isModelDownloaded
+        key1 = uiState.isLoggedIn,
+        key2 = uiState.isModelDownloaded
     ) {
-        if (uiState.isSkip || uiState.isLoggedIn) {
+        if (uiState.isLoggedIn) {
             if (uiState.isModelDownloaded) {
                 navigator.navigate(QuestionScreenDestination) {
                     popUpTo(LoginScreenDestination) {
@@ -81,17 +92,19 @@ fun LoginScreen(
 
 
     LoginScreenRoot(
-        onSkipClick = {
-            viewModel.onEvent(MainEvent.Skip)
+        onAnonymousClick = {
+            viewModel.onEvent(MainEvent.SignInAnonymously)
         },
-        onGoogleSignInClick = {}
+        onGoogleSignInClick = {
+            viewModel.onEvent(MainEvent.SignInWithGoogle(context))
+        }
     )
 }
 
 @Composable
 private fun LoginScreenRoot(
     onGoogleSignInClick: () -> Unit,
-    onSkipClick: () -> Unit
+    onAnonymousClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -268,13 +281,13 @@ private fun LoginScreenRoot(
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
-                        .clickable(onClick = onSkipClick)
+                        .clickable(onClick = onAnonymousClick)
                         .padding(horizontal = 32.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "Skip for now",
+                        text = "Anonymous",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

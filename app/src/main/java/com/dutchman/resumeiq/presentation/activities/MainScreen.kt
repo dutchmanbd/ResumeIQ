@@ -33,6 +33,7 @@ import androidx.navigation.compose.rememberNavController
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.generated.NavGraphs
 import com.ramcosta.composedestinations.generated.destinations.LoginScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.ModelDownloadScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.MoreScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.QuestionScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ScanScreenDestination
@@ -65,10 +66,13 @@ fun MainScreen(
                         BottomNavigationItem(
                             selected = currentRoute == QuestionScreenDestination.route,
                             onClick = {
-                                navController.navigate(QuestionScreenDestination.route) {
-                                    popUpTo(NavGraphs.root.startRoute.route) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                                if (currentRoute != QuestionScreenDestination.route) {
+                                    navController.navigate(QuestionScreenDestination.route) {
+                                        popUpTo(QuestionScreenDestination.route) {
+                                            inclusive = true
+                                            saveState = true
+                                        }
+                                    }
                                 }
                             },
                             icon = {
@@ -83,10 +87,13 @@ fun MainScreen(
                         BottomNavigationItem(
                             selected = currentRoute == MoreScreenDestination.route,
                             onClick = {
-                                navController.navigate(MoreScreenDestination.route) {
-                                    popUpTo(NavGraphs.root.startRoute.route) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                                if (currentRoute != MoreScreenDestination.route) {
+                                    navController.navigate(MoreScreenDestination.route) {
+                                        popUpTo(QuestionScreenDestination.route) {
+                                            inclusive = true
+                                            saveState = true
+                                        }
+                                    }
                                 }
                             },
                             icon = {
@@ -105,10 +112,13 @@ fun MainScreen(
             if (showBottomBar) {
                 FloatingActionButton(
                     onClick = {
-                        navController.navigate(ScanScreenDestination.route) {
-                            popUpTo(NavGraphs.root.startRoute.route) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
+                        if (currentRoute != ScanScreenDestination.route) {
+                            navController.navigate(ScanScreenDestination.route) {
+                                popUpTo(QuestionScreenDestination.route) {
+                                    inclusive = true
+                                    saveState = true
+                                }
+                            }
                         }
                     },
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -122,10 +132,19 @@ fun MainScreen(
         floatingActionButtonPosition = FabPosition.Center,
         isFloatingActionButtonDocked = true
     ) { paddingValues ->
+        val start = if (uiState.isLoggedIn) {
+            if (uiState.isModelDownloaded) {
+                QuestionScreenDestination
+            } else {
+                ModelDownloadScreenDestination
+            }
+        } else {
+            LoginScreenDestination
+        }
         Box(modifier = Modifier.padding(paddingValues)) {
             DestinationsNavHost(
                 navGraph = NavGraphs.root,
-                start = if ((uiState.isLoggedIn || uiState.isSkip) && uiState.isModelDownloaded) QuestionScreenDestination else LoginScreenDestination,
+                start = start,
                 navController = navController,
                 dependenciesContainerBuilder = {
                     dependency(viewModel)
