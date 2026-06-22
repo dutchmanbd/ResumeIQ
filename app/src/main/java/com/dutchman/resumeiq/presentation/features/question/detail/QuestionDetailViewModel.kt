@@ -61,7 +61,7 @@ class QuestionDetailViewModel @Inject constructor(
                 }
 
                 val prompt = """
-                    You are a highly qualified job candidate interviewing for a position relevant to this resume. Provide a tailored, real-world sample answer.
+                    You are a highly qualified job candidate interviewing for a position relevant to this resume. Provide a tailored, real-world answer with realistic example.
                     Interview Question: "${currentQuestion.question}"
                     RESPONSE RULES:
                     1. Speak in the FIRST PERSON ("I", "my team") as the candidate answering the question.
