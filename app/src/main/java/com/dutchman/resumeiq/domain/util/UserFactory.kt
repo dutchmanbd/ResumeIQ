@@ -1,5 +1,7 @@
 package com.dutchman.resumeiq.domain.util
 
+import com.dutchman.resumeiq.domain.models.Interviewer
+
 class UserFactory(
     private val sharedPref: SharedPref
 ) {
@@ -8,6 +10,9 @@ class UserFactory(
         private const val PREF_MODEL_ID = "pref_model_id"
         private const val PREF_IS_MODEL_DOWNLOADED = "pref_is_model_downloaded"
         private const val PREF_LAST_QUESTION_INDEX = "pref_last_question_index"
+        private const val PREF_INTERVIEWER_NAME = "pref_interviewer_name"
+        private const val PREF_INTERVIEWER_DESIGNATION = "pref_interviewer_designation"
+        private const val PREF_INTERVIEWER_MOBILE = "pref_interviewer_mobile"
     }
 
     val isSkip: Boolean
@@ -48,5 +53,19 @@ class UserFactory(
 
     fun saveLastQuestionIndex(index: Int) {
         sharedPref.write(PREF_LAST_QUESTION_INDEX, index)
+    }
+
+    val interviewer: Interviewer?
+        get() {
+            val name = sharedPref.read(PREF_INTERVIEWER_NAME, "")
+            val designation = sharedPref.read(PREF_INTERVIEWER_DESIGNATION, "")
+            val mobile = sharedPref.read(PREF_INTERVIEWER_MOBILE, "")
+            return if (name.isNotEmpty()) Interviewer(name, designation, mobile) else null
+        }
+
+    fun saveInterviewer(interviewer: Interviewer) {
+        sharedPref.write(PREF_INTERVIEWER_NAME, interviewer.name)
+        sharedPref.write(PREF_INTERVIEWER_DESIGNATION, interviewer.designation)
+        sharedPref.write(PREF_INTERVIEWER_MOBILE, interviewer.mobile)
     }
 }

@@ -61,6 +61,7 @@ import androidx.navigation.NavController
 import com.dutchman.resumeiq.domain.util.rememberSharedBackStackEntry
 import com.dutchman.resumeiq.presentation.features.scan.preview.QuestionPreviewScreen
 import com.ramcosta.composedestinations.generated.destinations.QuestionPreviewScreenDestination
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
@@ -84,9 +85,16 @@ fun ScanScreen(
     var selectedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
     val selectedPages = remember { mutableStateListOf<Int>(0) } // Default page 1 (index 0) selected
 
-    LaunchedEffect(uiState.parsedQuestions) {
-        if (uiState.parsedQuestions.isNotEmpty()) {
-            navigator.navigate(QuestionPreviewScreenDestination)
+
+    LaunchedEffect(viewModel.event) {
+        viewModel.event.collectLatest { effect ->
+            when (effect) {
+                is ScanEffect.NavigateToQuestionPreview -> {
+                    if (uiState.parsedQuestions.isNotEmpty()) {
+                        navigator.navigate(QuestionPreviewScreenDestination)
+                    }
+                }
+            }
         }
     }
 

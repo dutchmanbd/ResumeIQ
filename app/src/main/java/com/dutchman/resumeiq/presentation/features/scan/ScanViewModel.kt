@@ -18,21 +18,31 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
+import com.dutchman.resumeiq.domain.models.Interviewer
 import com.dutchman.resumeiq.domain.models.Question
 import com.dutchman.resumeiq.domain.util.FileStorage
+import com.dutchman.resumeiq.domain.util.UserFactory
 
 import com.dutchman.resumeiq.data.local.dao.QuestionDao
 import com.dutchman.resumeiq.data.local.entity.toEntity
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 @HiltViewModel
 class ScanViewModel @Inject constructor(
     private val gemmaInferenceHelper: GemmaInferenceHelper,
     private val fileStorage: FileStorage,
-    private val questionDao: QuestionDao
+    private val questionDao: QuestionDao,
+    private val userFactory: UserFactory
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ScanUiState())
     val uiState = _uiState.asStateFlow()
+
+    private val _event = MutableSharedFlow<ScanEffect>()
+    val event: SharedFlow<ScanEffect>
+        get() = _event.asSharedFlow()
 
     fun onEvent(event: ScanEvent) {
         when (event) {
@@ -120,11 +130,13 @@ class ScanViewModel @Inject constructor(
 //                    3. Keep generating items sequentially until you have populated at least 10-20 distinct objects in the array. Do not truncate the list.
 //                """.trimIndent()
 
+                val minimumQuestion = 25
+
                 val message = """
                     You are an expert technical interviewer and recruiter analyzing the attached resume image.
 
                     TASK:
-                    Generate a highly professional, real-world interview question bank based ONLY on the candidate's experience, role, and skills shown in the resume. You must output exactly 20 distinct questions.
+                    Generate a highly professional, real-world interview question bank based ONLY on the candidate's experience, role, and skills shown in the resume. You must output minimum $minimumQuestion distinct questions and maximum possible questions.
 
                     QUESTION STYLE:
                     Create realistic, scenario-based, and technical questions tailored to their specific industry and seniority. Questions should be concise (1-2 sentences maximum) but challenging, reflecting actual interviews for their target role.
@@ -132,19 +144,23 @@ class ScanViewModel @Inject constructor(
                     JSON OUTPUT FORMAT:
                     Output EXCLUSIVELY a raw JSON object. Do not include markdown tags like ```json, do not write code blocks, and do not write closing/opening chat greetings. Use this exact compact schema:
 
-                    {"questions": [{"c": "Skill | Lead | Behav", "l": "Basic | Adv", "q": "The professional interview question."}]}
+                    {"questions": [{"c": "Skill | Lead | Behav", "l": "Basic | Adv", "q": "The professional interview question."}], "info":{ "name":"Jewel Rana", "designation":"Senior Mobile Application Developer", "Mobile":"+8801812386609"}}
                     
                     FIELD DESCRIPTIONS:
                     - questions: The array containing the generated questions.
                     - c (Category): Must be exactly one of: "Skill" (Technical/Core Skills), "Lead" (Leadership/Mentoring), "Behav" (Behavioral/Scenario).
                     - l (Level): Must be exactly one of: "Basic" or "Adv".
                     - q (Question): The actual question text.
+                    - info: Information from selected resume.
+                    - name : Get Name for user.
+                    - designation : Get designation or current job title for user.
+                    - mobile : Get phone or mobile number for user.
                     
                     GENERATION REQUIREMENTS:
-                    1. Generate 5 "Skill" questions (focus on their core tools/languages).
-                    2. Generate 5 "Lead" questions (focus on their team impact or management).
-                    3. Generate 5 "Behav" questions (focus on real-world problem solving).
-                    Ensure exactly 20 items are output in the "questions" array.
+                    1. Generate 15 "Skill" questions or more (focus on their designation or job rank).
+                    2. Generate 5 "Lead" questions or more (focus on their designation or job rank).
+                    3. Generate 5 "Behav" questions or more (focus on real-world problem solving).
+                    Ensure minimum $minimumQuestion questions are output in the "questions" array and maximum possible questions.
                 """.trimIndent()
 
                 gemmaInferenceHelper.generateResponse(
@@ -197,6 +213,22 @@ class ScanViewModel @Inject constructor(
                 }
 
                 if (jsonObject != null && (jsonObject.has("q_list") || jsonObject.has("questions"))) {
+                    if (jsonObject.has("info")) {
+                        try {
+                            val infoObj = jsonObject.getJSONObject("info")
+                            val name = infoObj.optString("name", "")
+                            val designation = infoObj.optString("designation", "")
+                            var mobile = infoObj.optString("mobile", "")
+                            if (mobile.isEmpty()) {
+                                mobile = infoObj.optString("Mobile", "")
+                            }
+                            if (name.isNotEmpty()) {
+                                userFactory.saveInterviewer(Interviewer(name, designation, mobile))
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
                     val questionsArray =
                         if (jsonObject.has("q_list")) jsonObject.getJSONArray("q_list") else jsonObject.getJSONArray(
                             "questions"
@@ -267,6 +299,9 @@ class ScanViewModel @Inject constructor(
 
             if (parsedList.isNotEmpty()) {
                 _uiState.update { it.copy(parsedQuestions = parsedList) }
+                viewModelScope.launch {
+                    _event.emit(ScanEffect.NavigateToQuestionPreview)
+                }
             } else {
                 // Fallback: If parsing totally fails, at least show the raw text as one big question so user sees something happened
                 parsedList.add(

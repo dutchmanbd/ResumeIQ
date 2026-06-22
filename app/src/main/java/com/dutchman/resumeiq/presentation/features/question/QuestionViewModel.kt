@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dutchman.resumeiq.data.local.dao.QuestionDao
 import com.dutchman.resumeiq.data.local.entity.toDomain
+import com.dutchman.resumeiq.domain.models.Interviewer
 import com.dutchman.resumeiq.domain.models.Question
 import com.dutchman.resumeiq.domain.util.UserFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,6 +35,11 @@ class QuestionViewModel @Inject constructor(
     private val _lastQuestionIndex = MutableStateFlow(userFactory.lastQuestionIndex)
     val lastQuestionIndex: StateFlow<Int>
         get() = _lastQuestionIndex.asStateFlow()
+
+
+    private val _interviewer = MutableStateFlow(userFactory.interviewer)
+    val interviewer: StateFlow<Interviewer?>
+        get() = _interviewer.asStateFlow()
 
 
     fun saveLastQuestionIndex(index: Int) {

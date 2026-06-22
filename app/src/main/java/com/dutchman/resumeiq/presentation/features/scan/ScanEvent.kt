@@ -11,3 +11,8 @@ sealed interface ScanEvent {
     data class OnQuestionSelected(val id: Long) : ScanEvent
     data class OnSaveSelectedQuestions(val onSaved: () -> Unit) : ScanEvent
 }
+
+sealed interface ScanEffect {
+    data object NavigateToQuestionPreview : ScanEffect
+
+}

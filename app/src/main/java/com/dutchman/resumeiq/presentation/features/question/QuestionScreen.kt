@@ -43,6 +43,7 @@ fun QuestionScreen(
     val questions by viewModel.questions.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val lastSavedIndex by viewModel.lastQuestionIndex.collectAsStateWithLifecycle()
+    val interviewer by viewModel.interviewer.collectAsStateWithLifecycle()
 
     LaunchedEffect(questions.size) {
         if (questions.isNotEmpty() && listState.firstVisibleItemIndex == 0) {
@@ -64,6 +65,31 @@ fun QuestionScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
+            if (interviewer != null) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                    ) {
+                        Text(
+                            text = interviewer?.name ?: "",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1A202C)
+                        )
+                        if (interviewer?.designation.isNullOrEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = interviewer?.designation ?: "",
+                                fontSize = 16.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+            }
+
             if (questions.isEmpty()) {
                 item {
                     Text(
@@ -80,7 +106,7 @@ fun QuestionScreen(
                         tagColor = Color(0xFFEBF3FF),
                         tagTextColor = Color(0xFF1661D7),
                         question = question.question,
-                        isLastRead = index == lastSavedIndex && index > 0,
+                        isLastRead = index == lastSavedIndex && index >= 0,
                         onClick = {
 //                            val newIndex = listState.firstVisibleItemIndex
                             viewModel.saveLastQuestionIndex(index)
