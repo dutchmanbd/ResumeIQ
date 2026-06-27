@@ -7,6 +7,7 @@ import com.dutchman.resumeiq.domain.util.UserFactory
 import androidx.room.Room
 import com.dutchman.resumeiq.data.local.AppDatabase
 import com.dutchman.resumeiq.data.local.dao.QuestionDao
+import com.dutchman.resumeiq.domain.speech.LiveSpeechRecognizer
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,6 +18,12 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    @Provides
+    @Singleton
+    fun provideLiveSpeechRecognizer(
+        @ApplicationContext context: Context
+    ): LiveSpeechRecognizer = LiveSpeechRecognizer(context)
 
     @Provides
     @Singleton
@@ -46,7 +53,8 @@ object AppModule {
             context,
             AppDatabase::class.java,
             AppDatabase.DATABASE_NAME
-        ).build()
+        ).fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides

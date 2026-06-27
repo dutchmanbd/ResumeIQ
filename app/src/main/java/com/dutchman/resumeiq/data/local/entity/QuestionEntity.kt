@@ -4,7 +4,12 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.dutchman.resumeiq.domain.models.Question
 
-@Entity(tableName = "questions")
+import androidx.room.Index
+
+@Entity(
+    tableName = "questions",
+    indices = [Index(value = ["question"], unique = true)]
+)
 data class QuestionEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

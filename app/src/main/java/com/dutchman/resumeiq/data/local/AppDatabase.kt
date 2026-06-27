@@ -7,7 +7,7 @@ import com.dutchman.resumeiq.data.local.entity.QuestionEntity
 
 @Database(
     entities = [QuestionEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

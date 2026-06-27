@@ -63,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.dutchman.resumeiq.domain.util.rememberSharedBackStackEntry
 import com.dutchman.resumeiq.presentation.features.scan.preview.QuestionPreviewScreen
+import com.ramcosta.composedestinations.generated.destinations.AIGenerationQuestionScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.QuestionPreviewScreenDestination
 import kotlinx.coroutines.flow.collectLatest
 
@@ -205,95 +206,123 @@ fun ScanScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            OptionCard(
-                onClick = { launcher.launch(arrayOf("application/pdf", "image/*")) },
-                icon = {
-                    Surface(
-                        color = Color(0xFF1661D7),
-                        shape = CircleShape,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Default.Upload,
-                                contentDescription = null,
-                                tint = Color.White
-                            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OptionCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = { launcher.launch(arrayOf("application/pdf", "image/*")) },
+                    icon = {
+                        Surface(
+                            color = Color(0xFF1661D7),
+                            shape = CircleShape,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Upload, contentDescription = null, tint = Color.White)
+                            }
                         }
-                    }
-                },
-                title = "Upload Resume",
-                subtitle = "PDF or Image"
-            )
+                    },
+                    title = "Upload Resume",
+                    subtitle = "PDF or Image"
+                )
+                
+                OptionCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = { /* Handle camera scan */ },
+                    icon = {
+                        Surface(
+                            color = Color(0xFF86F286),
+                            shape = CircleShape,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color(0xFF1A5A1A))
+                            }
+                        }
+                    },
+                    title = "Scan Resume",
+                    subtitle = "Point camera"
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            OptionCard(
-                onClick = { /* Handle camera scan */ },
-                icon = {
-                    Surface(
-                        color = Color(0xFF86F286),
-                        shape = CircleShape,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Default.CameraAlt,
-                                contentDescription = null,
-                                tint = Color(0xFF1A5A1A)
-                            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OptionCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = { jsonLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                    icon = {
+                        Surface(
+                            color = Color(0xFFFCD34D),
+                            shape = CircleShape,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFFB45309))
+                            }
                         }
-                    }
-                },
-                title = "Scan Resume",
-                subtitle = "Point camera at document"
-            )
+                    },
+                    title = "Upload JSON",
+                    subtitle = "Select JSON file"
+                )
+
+                OptionCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = { viewModel.onEvent(ScanEvent.OnShowPasteDialogChanged(true)) },
+                    icon = {
+                        Surface(
+                            color = Color(0xFFE2E8F0),
+                            shape = CircleShape,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFF4A5568))
+                            }
+                        }
+                    },
+                    title = "Paste JSON",
+                    subtitle = "Paste raw JSON"
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            OptionCard(
-                onClick = { jsonLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
-                icon = {
-                    Surface(
-                        color = Color(0xFFFCD34D),
-                        shape = CircleShape,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Default.Description,
-                                contentDescription = null,
-                                tint = Color(0xFFB45309)
-                            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OptionCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = { navigator.navigate(AIGenerationQuestionScreenDestination) },
+                    icon = {
+                        Surface(
+                            color = Color(0xFFE0E7FF),
+                            shape = CircleShape,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = Color(0xFF4F46E5))
+                            }
                         }
-                    }
-                },
-                title = "Upload JSON File",
-                subtitle = "Select a JSON file"
-            )
+                    },
+                    title = "AI Smart Gen",
+                    subtitle = "Full questions set"
+                )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OptionCard(
-                onClick = { viewModel.onEvent(ScanEvent.OnShowPasteDialogChanged(true)) },
-                icon = {
-                    Surface(
-                        color = Color(0xFFE2E8F0),
-                        shape = CircleShape,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Default.Description,
-                                contentDescription = null,
-                                tint = Color(0xFF4A5568)
-                            )
+                OptionCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = { /* Handle Single Question */ },
+                    icon = {
+                        Surface(
+                            color = Color(0xFFFCE7F3),
+                            shape = CircleShape,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Outlined.QuestionMark, contentDescription = null, tint = Color(0xFFDB2777))
+                            }
                         }
-                    }
-                },
-                title = "Paste JSON Text",
-                subtitle = "Paste raw JSON"
-            )
+                    },
+                    title = "Quick Question",
+                    subtitle = "Single targeted"
+                )
+            }
 
             if (uiState.showPreview) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -531,6 +560,7 @@ fun ScanScreen(
 
 @Composable
 fun OptionCard(
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
     icon: @Composable () -> Unit,
     title: String,
@@ -540,7 +570,7 @@ fun OptionCard(
         color = Color(0xFFF4F6F9),
         border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() }
     ) {
@@ -549,15 +579,20 @@ fun OptionCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             icon()
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 title,
-                fontSize = 16.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF1A202C)
             )
             Spacer(modifier = Modifier.height(4.dp))
-            Text(subtitle, fontSize = 12.sp, color = Color.Gray)
+            Text(
+                subtitle,
+                fontSize = 10.sp,
+                color = Color.Gray,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
         }
     }
 }

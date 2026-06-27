@@ -15,10 +15,10 @@ interface QuestionDao {
     @Query("SELECT * FROM questions WHERE id = :id")
     fun getQuestionById(id: Long): Flow<QuestionEntity?>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertQuestions(questions: List<QuestionEntity>)
     
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertQuestion(question: QuestionEntity)
     
     @Query("DELETE FROM questions")

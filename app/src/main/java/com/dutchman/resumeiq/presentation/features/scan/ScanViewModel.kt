@@ -22,19 +22,23 @@ import com.dutchman.resumeiq.domain.models.Interviewer
 import com.dutchman.resumeiq.domain.models.Question
 import com.dutchman.resumeiq.domain.util.FileStorage
 import com.dutchman.resumeiq.domain.util.UserFactory
+import com.dutchman.resumeiq.domain.speech.LiveSpeechRecognizer
+import com.dutchman.resumeiq.domain.speech.SpeechEvent
 
 import com.dutchman.resumeiq.data.local.dao.QuestionDao
 import com.dutchman.resumeiq.data.local.entity.toEntity
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.Job
 
 @HiltViewModel
 class ScanViewModel @Inject constructor(
     private val gemmaInferenceHelper: GemmaInferenceHelper,
     private val fileStorage: FileStorage,
     private val questionDao: QuestionDao,
-    private val userFactory: UserFactory
+    private val userFactory: UserFactory,
+    private val liveSpeechRecognizer: LiveSpeechRecognizer
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ScanUiState())
@@ -43,6 +47,8 @@ class ScanViewModel @Inject constructor(
     private val _event = MutableSharedFlow<ScanEffect>()
     val event: SharedFlow<ScanEffect>
         get() = _event.asSharedFlow()
+        
+    private var speechJob: Job? = null
 
     fun onEvent(event: ScanEvent) {
         when (event) {
@@ -75,7 +81,52 @@ class ScanViewModel @Inject constructor(
             is ScanEvent.OnShowPasteDialogChanged -> {
                 _uiState.update { it.copy(showPasteDialog = event.show) }
             }
+            is ScanEvent.OnSpeechMicToggle -> toggleSpeechRecording()
+            is ScanEvent.OnMicrophonePermissionResult -> {
+                _uiState.update { it.copy(isMicrophonePermissionGranted = event.granted) }
+            }
         }
+    }
+
+    private fun toggleSpeechRecording() {
+        if (_uiState.value.isSpeechRecording) {
+            stopLiveRecognition()
+        } else {
+            startLiveRecognition()
+        }
+    }
+
+    private fun startLiveRecognition() {
+        if (!_uiState.value.isMicrophonePermissionGranted) return
+        speechJob?.cancel()
+        _uiState.update { it.copy(isSpeechRecording = true, speechPartialText = "") }
+
+        speechJob = viewModelScope.launch {
+            liveSpeechRecognizer.startListening().collect { event ->
+                when (event) {
+                    is SpeechEvent.Partial -> {
+                        _uiState.update { it.copy(speechPartialText = event.text) }
+                    }
+                    is SpeechEvent.Final -> {
+                        val currentText = _uiState.value.speechPartialText
+                        val newText = if (currentText.isEmpty()) event.text else "$currentText ${event.text}"
+                        _uiState.update { it.copy(speechPartialText = newText) }
+                    }
+                    is SpeechEvent.Error -> {
+                        stopLiveRecognition()
+                    }
+                    SpeechEvent.Done -> {
+                        _uiState.update { it.copy(isSpeechRecording = false) }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopLiveRecognition() {
+        speechJob?.cancel()
+        speechJob = null
+        _uiState.update { it.copy(isSpeechRecording = false) }
     }
 
     private fun saveSelectedQuestions(onSaved: () -> Unit) {

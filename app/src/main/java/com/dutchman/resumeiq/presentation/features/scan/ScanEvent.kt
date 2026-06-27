@@ -15,6 +15,8 @@ sealed interface ScanEvent {
     data class OnSelectedImageBitmapChanged(val bitmap: Bitmap?) : ScanEvent
     data class OnPageSelectionToggled(val pageIndex: Int) : ScanEvent
     data class OnShowPasteDialogChanged(val show: Boolean) : ScanEvent
+    data object OnSpeechMicToggle : ScanEvent
+    data class OnMicrophonePermissionResult(val granted: Boolean) : ScanEvent
 }
 
 sealed interface ScanEffect {

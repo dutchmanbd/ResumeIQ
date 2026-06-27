@@ -22,5 +22,8 @@ data class ScanUiState(
     val parsedQuestions: List<Question> = emptyList(),
     val selectedImageBitmap: Bitmap? = null,
     val selectedPages: List<Int> = listOf(0),
-    val showPasteDialog: Boolean = false
+    val showPasteDialog: Boolean = false,
+    val isSpeechRecording: Boolean = false,
+    val speechPartialText: String = "",
+    val isMicrophonePermissionGranted: Boolean = false
 )
