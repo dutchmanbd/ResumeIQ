@@ -82,8 +82,18 @@ fun ScanScreen(
         }
     }
 
+    val jsonLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            viewModel.onEvent(ScanEvent.OnJsonFileSelected(it, context))
+        }
+    }
+
     var selectedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
     val selectedPages = remember { mutableStateListOf<Int>(0) } // Default page 1 (index 0) selected
+    var showPasteDialog by remember { mutableStateOf(false) }
+    var pastedJsonText by remember { mutableStateOf("") }
 
 
     LaunchedEffect(viewModel.event) {
@@ -237,6 +247,52 @@ fun ScanScreen(
                 },
                 title = "Scan Resume",
                 subtitle = "Point camera at document"
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OptionCard(
+                onClick = { jsonLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                icon = {
+                    Surface(
+                        color = Color(0xFFFCD34D),
+                        shape = CircleShape,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Description,
+                                contentDescription = null,
+                                tint = Color(0xFFB45309)
+                            )
+                        }
+                    }
+                },
+                title = "Upload JSON File",
+                subtitle = "Select a JSON file"
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OptionCard(
+                onClick = { showPasteDialog = true },
+                icon = {
+                    Surface(
+                        color = Color(0xFFE2E8F0),
+                        shape = CircleShape,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Description,
+                                contentDescription = null,
+                                tint = Color(0xFF4A5568)
+                            )
+                        }
+                    }
+                },
+                title = "Paste JSON Text",
+                subtitle = "Paste raw JSON"
             )
 
             if (uiState.showPreview) {
@@ -440,6 +496,37 @@ fun ScanScreen(
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+
+    if (showPasteDialog) {
+        AlertDialog(
+            onDismissRequest = { showPasteDialog = false },
+            title = { Text("Paste JSON", fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = pastedJsonText,
+                    onValueChange = { pastedJsonText = it },
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    placeholder = { Text("Paste your JSON array or object here...") }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPasteDialog = false
+                        viewModel.onEvent(ScanEvent.OnJsonTextPasted(pastedJsonText))
+                        pastedJsonText = ""
+                    }
+                ) {
+                    Text("Parse", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPasteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
 

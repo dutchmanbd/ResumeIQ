@@ -56,6 +56,8 @@ class ScanViewModel @Inject constructor(
                 _uiState.update { it.copy(parsedQuestions = updatedQuestions) }
             }
             is ScanEvent.OnSaveSelectedQuestions -> saveSelectedQuestions(event.onSaved)
+            is ScanEvent.OnJsonFileSelected -> processJsonFile(event.uri, event.context)
+            is ScanEvent.OnJsonTextPasted -> parseGeneratedQuestions(event.json)
         }
     }
 
@@ -67,6 +69,20 @@ class ScanViewModel @Inject constructor(
             }
             withContext(Dispatchers.Main) {
                 onSaved()
+            }
+        }
+    }
+
+    private fun processJsonFile(uri: Uri, context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val jsonString = inputStream?.bufferedReader().use { it?.readText() } ?: ""
+                withContext(Dispatchers.Main) {
+                    parseGeneratedQuestions(jsonString)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -193,7 +209,47 @@ class ScanViewModel @Inject constructor(
             val arrStart = jsonString.indexOf("[")
             val arrEnd = jsonString.lastIndexOf("]")
 
-            if (objStart != -1 && objEnd != -1 && objStart < objEnd) {
+            val isArrayOuter = arrStart != -1 && arrEnd != -1 && (objStart == -1 || arrStart < objStart) && (objEnd == -1 || arrEnd > objEnd)
+
+            if (isArrayOuter) {
+                var cleanJson = jsonString.substring(arrStart, arrEnd + 1)
+                var questionsArray: org.json.JSONArray? = null
+                try {
+                    questionsArray = org.json.JSONArray(cleanJson)
+                } catch (e: Exception) {
+                    try {
+                        questionsArray = org.json.JSONArray("$cleanJson]")
+                    } catch (e2: Exception) {
+                        e2.printStackTrace()
+                    }
+                }
+
+                if (questionsArray != null) {
+                    for (i in 0 until questionsArray.length()) {
+                        val qObj = questionsArray.getJSONObject(i)
+                        val question = if (qObj.has("q")) qObj.optString("q", "").trim()
+                            .removeSurrounding("\"").trim() else qObj.optString("question", "")
+                            .trim().removeSurrounding("\"").trim()
+                        val difficulty = if (qObj.has("l")) qObj.optString("l", "") else if (qObj.has("d")) qObj.optString(
+                            "d",
+                            ""
+                        ) else qObj.optString("difficulty", "")
+                        val category = if (qObj.has("c")) qObj.optString(
+                            "c",
+                            ""
+                        ) else qObj.optString("category", "")
+                        if (question.isNotEmpty()) {
+                            parsedList.add(
+                                Question(
+                                    question = question,
+                                    difficulty = difficulty,
+                                    category = category
+                                )
+                            )
+                        }
+                    }
+                }
+            } else if (objStart != -1 && objEnd != -1 && objStart < objEnd) {
                 var cleanJson = jsonString.substring(objStart, objEnd + 1)
 
                 // Attempt to parse, if it fails due to truncation, append ]} and try again
@@ -233,44 +289,6 @@ class ScanViewModel @Inject constructor(
                         if (jsonObject.has("q_list")) jsonObject.getJSONArray("q_list") else jsonObject.getJSONArray(
                             "questions"
                         )
-                    for (i in 0 until questionsArray.length()) {
-                        val qObj = questionsArray.getJSONObject(i)
-                        val question = if (qObj.has("q")) qObj.optString("q", "").trim()
-                            .removeSurrounding("\"").trim() else qObj.optString("question", "")
-                            .trim().removeSurrounding("\"").trim()
-                        val difficulty = if (qObj.has("l")) qObj.optString("l", "") else if (qObj.has("d")) qObj.optString(
-                            "d",
-                            ""
-                        ) else qObj.optString("difficulty", "")
-                        val category = if (qObj.has("c")) qObj.optString(
-                            "c",
-                            ""
-                        ) else qObj.optString("category", "")
-                        if (question.isNotEmpty()) {
-                            parsedList.add(
-                                Question(
-                                    question = question,
-                                    difficulty = difficulty,
-                                    category = category
-                                )
-                            )
-                        }
-                    }
-                }
-            } else if (arrStart != -1 && arrEnd != -1 && arrStart < arrEnd) {
-                var cleanJson = jsonString.substring(arrStart, arrEnd + 1)
-                var questionsArray: org.json.JSONArray? = null
-                try {
-                    questionsArray = org.json.JSONArray(cleanJson)
-                } catch (e: Exception) {
-                    try {
-                        questionsArray = org.json.JSONArray("$cleanJson]")
-                    } catch (e2: Exception) {
-                        e2.printStackTrace()
-                    }
-                }
-
-                if (questionsArray != null) {
                     for (i in 0 until questionsArray.length()) {
                         val qObj = questionsArray.getJSONObject(i)
                         val question = if (qObj.has("q")) qObj.optString("q", "").trim()
