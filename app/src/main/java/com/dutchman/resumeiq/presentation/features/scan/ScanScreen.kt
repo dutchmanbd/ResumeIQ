@@ -34,6 +34,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -48,6 +50,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -73,6 +76,7 @@ fun ScanScreen(
     val viewModel: ScanViewModel = hiltViewModel(navController.rememberSharedBackStackEntry())
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val clipboard = LocalClipboard.current
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -82,6 +86,8 @@ fun ScanScreen(
         }
     }
 
+    val coroutineScope = rememberCoroutineScope()
+
     val jsonLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -89,12 +95,6 @@ fun ScanScreen(
             viewModel.onEvent(ScanEvent.OnJsonFileSelected(it, context))
         }
     }
-
-    var selectedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    val selectedPages = remember { mutableStateListOf<Int>(0) } // Default page 1 (index 0) selected
-    var showPasteDialog by remember { mutableStateOf(false) }
-    var pastedJsonText by remember { mutableStateOf("") }
-
 
     LaunchedEffect(viewModel.event) {
         viewModel.event.collectLatest { effect ->
@@ -108,8 +108,8 @@ fun ScanScreen(
         }
     }
 
-    if (selectedImageBitmap != null) {
-        Dialog(onDismissRequest = { selectedImageBitmap = null }) {
+    if (uiState.selectedImageBitmap != null) {
+        Dialog(onDismissRequest = { viewModel.onEvent(ScanEvent.OnSelectedImageBitmapChanged(null)) }) {
             var scale by remember { mutableStateOf(1f) }
             var offset by remember { mutableStateOf(Offset.Zero) }
 
@@ -133,7 +133,7 @@ fun ScanScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    bitmap = selectedImageBitmap!!.asImageBitmap(),
+                    bitmap = uiState.selectedImageBitmap!!.asImageBitmap(),
                     contentDescription = "Preview",
                     modifier = Modifier
                         .fillMaxWidth()
@@ -275,7 +275,7 @@ fun ScanScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             OptionCard(
-                onClick = { showPasteDialog = true },
+                onClick = { viewModel.onEvent(ScanEvent.OnShowPasteDialogChanged(true)) },
                 icon = {
                     Surface(
                         color = Color(0xFFE2E8F0),
@@ -353,7 +353,7 @@ fun ScanScreen(
                             for (i in 0 until 2) {
                                 val imageIndex = chunkIndex * 2 + i
                                 val bitmap = chunk.getOrNull(i)
-                                val isSelected = selectedPages.contains(imageIndex)
+                                val isSelected = uiState.selectedPages.contains(imageIndex)
 
                                 if (bitmap != null) {
                                     PagePreviewCard(
@@ -361,13 +361,9 @@ fun ScanScreen(
                                         pageNumber = imageIndex + 1,
                                         isSelected = isSelected,
                                         bitmap = bitmap,
-                                        onClick = { selectedImageBitmap = bitmap },
+                                        onClick = { viewModel.onEvent(ScanEvent.OnSelectedImageBitmapChanged(bitmap)) },
                                         onLongClick = {
-                                            if (selectedPages.contains(imageIndex)) {
-                                                selectedPages.remove(imageIndex)
-                                            } else {
-                                                selectedPages.add(imageIndex)
-                                            }
+                                            viewModel.onEvent(ScanEvent.OnPageSelectionToggled(imageIndex))
                                         }
                                     )
                                 } else if (imageIndex < uiState.pageCount.coerceAtMost(10)) {
@@ -428,7 +424,7 @@ fun ScanScreen(
                 Button(
                     onClick = {
                         val selectedBitmaps = uiState.previewImages.filterIndexed { index, _ ->
-                            selectedPages.contains(index)
+                            uiState.selectedPages.contains(index)
                         }
                         viewModel.onEvent(ScanEvent.OnGenerateQuestionsClicked(selectedBitmaps))
                     },
@@ -498,31 +494,32 @@ fun ScanScreen(
         }
     }
 
-    if (showPasteDialog) {
+    if (uiState.showPasteDialog) {
         AlertDialog(
-            onDismissRequest = { showPasteDialog = false },
+            onDismissRequest = { viewModel.onEvent(ScanEvent.OnShowPasteDialogChanged(false)) },
             title = { Text("Paste JSON", fontWeight = FontWeight.Bold) },
             text = {
-                OutlinedTextField(
-                    value = pastedJsonText,
-                    onValueChange = { pastedJsonText = it },
-                    modifier = Modifier.fillMaxWidth().height(200.dp),
-                    placeholder = { Text("Paste your JSON array or object here...") }
-                )
+                Text("Do you want to paste JSON text from your clipboard and parse it?", fontSize = 16.sp)
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showPasteDialog = false
-                        viewModel.onEvent(ScanEvent.OnJsonTextPasted(pastedJsonText))
-                        pastedJsonText = ""
+                        viewModel.onEvent(ScanEvent.OnShowPasteDialogChanged(false))
+                        coroutineScope.launch {
+                            val clipEntry = clipboard.getClipEntry()
+                            val clipData = clipEntry?.clipData
+                            val clipText = if (clipData != null && clipData.itemCount > 0) {
+                                clipData.getItemAt(0).text?.toString() ?: ""
+                            } else ""
+                            viewModel.onEvent(ScanEvent.OnJsonTextPasted(clipText))
+                        }
                     }
                 ) {
-                    Text("Parse", fontWeight = FontWeight.Bold)
+                    Text("Okay", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showPasteDialog = false }) {
+                TextButton(onClick = { viewModel.onEvent(ScanEvent.OnShowPasteDialogChanged(false)) }) {
                     Text("Cancel")
                 }
             }

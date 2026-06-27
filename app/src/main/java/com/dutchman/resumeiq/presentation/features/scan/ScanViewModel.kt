@@ -58,6 +58,23 @@ class ScanViewModel @Inject constructor(
             is ScanEvent.OnSaveSelectedQuestions -> saveSelectedQuestions(event.onSaved)
             is ScanEvent.OnJsonFileSelected -> processJsonFile(event.uri, event.context)
             is ScanEvent.OnJsonTextPasted -> parseGeneratedQuestions(event.json)
+            is ScanEvent.OnSelectedImageBitmapChanged -> {
+                _uiState.update { it.copy(selectedImageBitmap = event.bitmap) }
+            }
+            is ScanEvent.OnPageSelectionToggled -> {
+                _uiState.update { state ->
+                    val newSelected = state.selectedPages.toMutableList()
+                    if (newSelected.contains(event.pageIndex)) {
+                        newSelected.remove(event.pageIndex)
+                    } else {
+                        newSelected.add(event.pageIndex)
+                    }
+                    state.copy(selectedPages = newSelected)
+                }
+            }
+            is ScanEvent.OnShowPasteDialogChanged -> {
+                _uiState.update { it.copy(showPasteDialog = event.show) }
+            }
         }
     }
 

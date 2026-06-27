@@ -19,5 +19,8 @@ data class ScanUiState(
     val isProcessing: Boolean = false,
     val isGenerating: Boolean = false,
     val generatedQuestions: String = "",
-    val parsedQuestions: List<Question> = emptyList()
+    val parsedQuestions: List<Question> = emptyList(),
+    val selectedImageBitmap: Bitmap? = null,
+    val selectedPages: List<Int> = listOf(0),
+    val showPasteDialog: Boolean = false
 )

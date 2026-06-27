@@ -12,6 +12,9 @@ sealed interface ScanEvent {
     data class OnSaveSelectedQuestions(val onSaved: () -> Unit) : ScanEvent
     data class OnJsonFileSelected(val uri: Uri, val context: Context) : ScanEvent
     data class OnJsonTextPasted(val json: String) : ScanEvent
+    data class OnSelectedImageBitmapChanged(val bitmap: Bitmap?) : ScanEvent
+    data class OnPageSelectionToggled(val pageIndex: Int) : ScanEvent
+    data class OnShowPasteDialogChanged(val show: Boolean) : ScanEvent
 }
 
 sealed interface ScanEffect {
