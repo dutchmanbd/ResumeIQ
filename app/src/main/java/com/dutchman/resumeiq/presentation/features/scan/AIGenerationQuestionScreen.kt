@@ -2,6 +2,8 @@ package com.dutchman.resumeiq.presentation.features.scan
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -29,16 +31,19 @@ import androidx.navigation.NavController
 import com.dutchman.resumeiq.domain.util.rememberSharedBackStackEntry
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import com.ramcosta.composedestinations.generated.destinations.QuestionPreviewScreenDestination
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
 fun AIGenerationQuestionScreen(
     navController: NavController,
+    navigator: DestinationsNavigator,
 ) {
     val viewModel: ScanViewModel = hiltViewModel(navController.rememberSharedBackStackEntry())
     val uiState by viewModel.uiState.collectAsState()
-    var promptText by remember { mutableStateOf("") }
     
     val context = LocalContext.current
     val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
@@ -63,7 +68,19 @@ fun AIGenerationQuestionScreen(
     // Sync speech text to prompt
     LaunchedEffect(uiState.speechPartialText) {
         if (uiState.isSpeechRecording && uiState.speechPartialText.isNotEmpty()) {
-            promptText = uiState.speechPartialText
+            viewModel.onEvent(ScanEvent.OnPromptTextChanged(uiState.speechPartialText))
+        }
+    }
+
+    LaunchedEffect(viewModel.event) {
+        viewModel.event.collectLatest { effect ->
+            when (effect) {
+                is ScanEffect.NavigateToQuestionPreview -> {
+                    if (uiState.parsedQuestions.isNotEmpty()) {
+                        navigator.navigate(QuestionPreviewScreenDestination)
+                    }
+                }
+            }
         }
     }
 
@@ -83,18 +100,37 @@ fun AIGenerationQuestionScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .imePadding()
                 .background(Color(0xFFF8F9FA))
         ) {
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                contentAlignment = if (uiState.generatedQuestions.isNotEmpty()) Alignment.TopStart else Alignment.Center
             ) {
-                Text(
-                    text = "What kind of questions would you like to generate?",
-                    color = Color.Gray
-                )
+                if (uiState.generatedQuestions.isNotEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(vertical = 16.dp)
+                    ) {
+                        Text(
+                            text = uiState.generatedQuestions,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                } else if (uiState.isGenerating) {
+                    CircularProgressIndicator()
+                } else {
+                    Text(
+                        text = "What kind of questions would you like to generate?",
+                        color = Color.Gray,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
             }
 
             // MiniDoctor-style Input Area
@@ -113,38 +149,38 @@ fun AIGenerationQuestionScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     // Plus Button
-                    IconButton(
-                        onClick = { /* TODO attach file */ },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                                    CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Add",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
+//                    IconButton(
+//                        onClick = { /* TODO attach file */ },
+//                        modifier = Modifier.size(36.dp)
+//                    ) {
+//                        Box(
+//                            modifier = Modifier
+//                                .size(28.dp)
+//                                .background(
+//                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+//                                    CircleShape
+//                                ),
+//                            contentAlignment = Alignment.Center
+//                        ) {
+//                            Icon(
+//                                imageVector = Icons.Default.Add,
+//                                contentDescription = "Add",
+//                                tint = MaterialTheme.colorScheme.onSurface,
+//                                modifier = Modifier.size(20.dp)
+//                            )
+//                        }
+//                    }
 
                     Spacer(modifier = Modifier.width(8.dp))
 
                     Box(modifier = Modifier.weight(1f)) {
-                        if (promptText.isEmpty() && !uiState.isSpeechRecording) {
+                        if (uiState.promptText.isEmpty() && !uiState.isSpeechRecording) {
                             Text(
                                 text = "Ask anything...",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                             )
-                        } else if (uiState.isSpeechRecording && promptText.isEmpty()) {
+                        } else if (uiState.isSpeechRecording && uiState.promptText.isEmpty()) {
                              Text(
                                 text = "Listening...",
                                 style = MaterialTheme.typography.bodyLarge,
@@ -152,8 +188,8 @@ fun AIGenerationQuestionScreen(
                             )
                         }
                         BasicTextField(
-                            value = promptText,
-                            onValueChange = { promptText = it },
+                            value = uiState.promptText,
+                            onValueChange = { viewModel.onEvent(ScanEvent.OnPromptTextChanged(it)) },
                             textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                             modifier = Modifier.fillMaxWidth(),
                             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -175,7 +211,7 @@ fun AIGenerationQuestionScreen(
                                 modifier = Modifier.size(30.dp)
                             )
                         }
-                    } else if (promptText.isEmpty()) {
+                    } else if (uiState.promptText.isEmpty()) {
                         IconButton(
                             onClick = {
                                 if (uiState.isMicrophonePermissionGranted) {
@@ -195,21 +231,36 @@ fun AIGenerationQuestionScreen(
                         }
                     } else {
                         IconButton(
-                            onClick = { promptText = "" },
+                            onClick = { 
+                                if (!uiState.isGenerating) {
+                                    viewModel.onEvent(ScanEvent.OnGenerateQuestionsFromPrompt)
+                                } else {
+                                    // Optionally handle cancellation here if viewmodel supports it
+                                }
+                            },
                             modifier = Modifier.size(36.dp)
                         ) {
                             Box(
                                 modifier = Modifier
                                     .size(32.dp)
-                                    .background(MaterialTheme.colorScheme.onSurface, CircleShape),
+                                    .background(if (uiState.isGenerating) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.ArrowUpward,
-                                    contentDescription = "Send",
-                                    tint = MaterialTheme.colorScheme.surface,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                if (uiState.isGenerating) {
+                                    Icon(
+                                        imageVector = Icons.Default.Stop,
+                                        contentDescription = "Stop",
+                                        tint = MaterialTheme.colorScheme.surface,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowUpward,
+                                        contentDescription = "Send",
+                                        tint = MaterialTheme.colorScheme.surface,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         }
                     }

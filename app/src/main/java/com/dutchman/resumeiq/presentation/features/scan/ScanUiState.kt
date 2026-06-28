@@ -25,5 +25,6 @@ data class ScanUiState(
     val showPasteDialog: Boolean = false,
     val isSpeechRecording: Boolean = false,
     val speechPartialText: String = "",
-    val isMicrophonePermissionGranted: Boolean = false
+    val isMicrophonePermissionGranted: Boolean = false,
+    val promptText: String = ""
 )

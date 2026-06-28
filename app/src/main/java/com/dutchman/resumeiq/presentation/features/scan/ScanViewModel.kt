@@ -85,6 +85,15 @@ class ScanViewModel @Inject constructor(
             is ScanEvent.OnMicrophonePermissionResult -> {
                 _uiState.update { it.copy(isMicrophonePermissionGranted = event.granted) }
             }
+
+            is ScanEvent.OnPromptTextChanged -> {
+                _uiState.update { state ->
+                    state.copy(
+                        promptText = event.text
+                    )
+                }
+            }
+            is ScanEvent.OnGenerateQuestionsFromPrompt -> generateQuestions()
         }
     }
 
@@ -174,6 +183,88 @@ class ScanViewModel @Inject constructor(
             }
         }
     }
+
+
+    private fun generateQuestions() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
+
+            try {
+                val file = fileStorage.getDownloadedFile()
+                if (file != null) {
+                    gemmaInferenceHelper.initialize(file.absolutePath)
+                } else {
+                    _uiState.update { it.copy(isGenerating = false) }
+                    return@launch
+                }
+
+//                val message = """
+//                    You are an expert technical interviewer and executive recruiter. Your task is to analyze the text inside the provided resume image and generate a robust question bank for the interviewer.
+//
+//                    OUTPUT REQUIREMENT:
+//                    You must generate a MINIMUM of 10 and a MAXIMUM of 20 distinct interview questions.
+//
+//                    For each question, you must assign a difficulty level ("Basic" or "Advanced") and map it to one of these primary categories: "Technical Skill", "Leadership", "Behavioral", or "Project-Specific".
+//
+//                    Output your response EXCLUSIVELY as a valid JSON object. Do not include introductory text, markdown code blocks (like ```json), or explanatory notes. Follow this JSON schema exactly:
+//
+//                    {
+//                      "questions": [
+//                        {
+//                          "question": "The actual question text here",
+//                          "difficulty": "Basic or Advanced",
+//                          "category": "Technical Skill, Leadership, Behavioral, or Project-Specific"
+//                        }
+//                      ]
+//                    }
+//
+//                    CRITICAL RULES FOR GENERATION:
+//                    1. "Basic" questions should verify core competencies, standard tools, and fundamental behaviors mentioned.
+//                    2. "Advanced" questions should test edge cases, architectural decisions, conflict management, or scale limits based on their senior-level claims.
+//                    3. Keep generating items sequentially until you have populated at least 10-20 distinct objects in the array. Do not truncate the list.
+//                """.trimIndent()
+
+                val minimumQuestion = 25
+
+                val message = """
+                    You are an expert technical interviewer and recruiter analyzing the attached resume image.
+
+                    TASK:
+                    Generate a highly professional, real-world interview question bank based ONLY ${uiState.value.promptText}.
+
+                    QUESTION STYLE:
+                    Create realistic, scenario-based, and technical questions tailored to their specific industry and seniority. Questions should be concise (1-2 sentences maximum) but challenging, reflecting actual interviews for their target role.
+
+                    JSON OUTPUT FORMAT:
+                    Output EXCLUSIVELY a raw JSON object. Do not include markdown tags like ```json, do not write code blocks, and do not write closing/opening chat greetings. Use this exact compact schema:
+
+                    {"questions": [{"c": "Skill | Lead | Behav", "l": "Basic | Adv", "q": "The professional interview question."}], "info":{ "name":"Jewel Rana", "designation":"Senior Mobile Application Developer", "Mobile":"+8801812386609"}}
+                    
+                    FIELD DESCRIPTIONS:
+                    - questions: The array containing the generated questions.
+                    - c (Category): Must be exactly one of: "Skill" (Technical/Core Skills), "Lead" (Leadership/Mentoring), "Behav" (Behavioral/Scenario).
+                    - l (Level): Must be exactly one of: "Basic" or "Adv".
+                    - q (Question): The actual question text.
+                   
+                """.trimIndent()
+
+                gemmaInferenceHelper.generateResponse(
+                    prompt = message,
+                ).collect { result ->
+                    _uiState.update { it.copy(generatedQuestions = it.generatedQuestions + result) }
+                }
+
+                _uiState.update { it.copy(isGenerating = false) }
+                val jsonString = _uiState.value.generatedQuestions;
+                Log.d("ScanViewModel", "generateQuestions: $jsonString")
+                parseGeneratedQuestions(jsonString)
+            } catch (e: Throwable) {
+                e.printStackTrace()
+                _uiState.update { it.copy(isGenerating = false) }
+            }
+        }
+    }
+
 
     private fun generateQuestions(images: List<Bitmap>) {
         viewModelScope.launch(Dispatchers.IO) {

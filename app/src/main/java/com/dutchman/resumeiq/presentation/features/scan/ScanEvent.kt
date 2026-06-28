@@ -17,6 +17,8 @@ sealed interface ScanEvent {
     data class OnShowPasteDialogChanged(val show: Boolean) : ScanEvent
     data object OnSpeechMicToggle : ScanEvent
     data class OnMicrophonePermissionResult(val granted: Boolean) : ScanEvent
+    data class OnPromptTextChanged(val text: String) : ScanEvent
+    data object OnGenerateQuestionsFromPrompt : ScanEvent
 }
 
 sealed interface ScanEffect {
