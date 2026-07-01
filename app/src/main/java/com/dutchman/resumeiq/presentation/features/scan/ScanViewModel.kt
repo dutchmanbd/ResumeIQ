@@ -94,6 +94,23 @@ class ScanViewModel @Inject constructor(
                 }
             }
             is ScanEvent.OnGenerateQuestionsFromPrompt -> generateQuestions()
+            is ScanEvent.OnSaveQuickQuestion -> saveQuickQuestion(event.question, event.onSaved)
+        }
+    }
+
+    private fun saveQuickQuestion(questionText: String, onSaved: () -> Unit) {
+        viewModelScope.launch {
+            if (questionText.isNotBlank()) {
+                val entity = com.dutchman.resumeiq.data.local.entity.QuestionEntity(
+                    question = questionText.trim(),
+                    difficulty = "Unknown",
+                    category = "Unknown"
+                )
+                questionDao.insertQuestion(entity)
+            }
+            withContext(Dispatchers.Main) {
+                onSaved()
+            }
         }
     }
 

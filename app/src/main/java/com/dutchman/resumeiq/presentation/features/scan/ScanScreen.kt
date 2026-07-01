@@ -65,6 +65,7 @@ import com.dutchman.resumeiq.domain.util.rememberSharedBackStackEntry
 import com.dutchman.resumeiq.presentation.features.scan.preview.QuestionPreviewScreen
 import com.ramcosta.composedestinations.generated.destinations.AIGenerationQuestionScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.QuestionPreviewScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.QuickQuestionScreenDestination
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -307,7 +308,7 @@ fun ScanScreen(
 
                 OptionCard(
                     modifier = Modifier.weight(1f),
-                    onClick = { /* Handle Single Question */ },
+                    onClick = { navigator.navigate(QuickQuestionScreenDestination) },
                     icon = {
                         Surface(
                             color = Color(0xFFFCE7F3),

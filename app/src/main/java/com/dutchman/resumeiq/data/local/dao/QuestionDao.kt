@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.dutchman.resumeiq.data.local.entity.QuestionEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -20,6 +21,9 @@ interface QuestionDao {
     
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertQuestion(question: QuestionEntity)
+    
+    @Update
+    suspend fun updateQuestion(question: QuestionEntity)
     
     @Query("DELETE FROM questions")
     suspend fun clearQuestions()

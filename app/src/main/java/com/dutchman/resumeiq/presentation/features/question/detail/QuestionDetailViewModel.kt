@@ -83,7 +83,7 @@ class QuestionDetailViewModel @Inject constructor(
                         difficulty = currentQuestion.difficulty,
                         category = currentQuestion.category
                     )
-                    questionDao.insertQuestion(updatedEntity)
+                    questionDao.updateQuestion(updatedEntity)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

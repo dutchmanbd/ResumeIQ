@@ -19,6 +19,7 @@ sealed interface ScanEvent {
     data class OnMicrophonePermissionResult(val granted: Boolean) : ScanEvent
     data class OnPromptTextChanged(val text: String) : ScanEvent
     data object OnGenerateQuestionsFromPrompt : ScanEvent
+    data class OnSaveQuickQuestion(val question: String, val onSaved: () -> Unit) : ScanEvent
 }
 
 sealed interface ScanEffect {
