@@ -44,16 +44,16 @@ fun QuestionPreviewScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("ResumeIQ", fontWeight = FontWeight.Bold, color = Color(0xFF104AAB), fontSize = 20.sp) },
+                title = { Text("ResumeIQ", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 20.sp) },
                 navigationIcon = {
                     IconButton(onClick = { navigator.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF104AAB))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF8F9FA))
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Color(0xFFF8F9FA)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -63,30 +63,30 @@ fun QuestionPreviewScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Review Found Questions", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF104AAB))
+            Text("Review Found Questions", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 "We've identified ${uiState.parsedQuestions.size} relevant interview questions from your resume and job description. Select the ones you want to add to your practice list.",
                 fontSize = 14.sp,
-                color = Color(0xFF4A5568),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 20.sp
             )
             
             Spacer(modifier = Modifier.height(16.dp))
             
             Surface(
-                color = Color(0xFFEBF3FF),
+                color = MaterialTheme.colorScheme.primaryContainer,
                 shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, Color(0xFFB0D0FF)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(modifier = Modifier.padding(16.dp)) {
-                    Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = Color(0xFF1661D7), modifier = Modifier.size(20.dp))
+                    Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text("AI INSIGHT", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1661D7))
+                        Text("AI INSIGHT", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Focus on the questions marked with \"High Priority\" as they align most closely with the skills mentioned in your target job description.", fontSize = 13.sp, color = Color(0xFF2D3748), lineHeight = 18.sp)
+                        Text("Focus on the questions marked with \"High Priority\" as they align most closely with the skills mentioned in your target job description.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onPrimaryContainer, lineHeight = 18.sp)
                     }
                 }
             }
@@ -109,7 +109,7 @@ fun QuestionPreviewScreen(
                     modifier = Modifier.weight(1f).height(52.dp),
                     shape = RoundedCornerShape(26.dp)
                 ) {
-                    Text("Cancel", color = Color(0xFF1661D7))
+                    Text("Cancel", color = MaterialTheme.colorScheme.primary)
                 }
                 
                 Button(
@@ -125,11 +125,11 @@ fun QuestionPreviewScreen(
                     },
                     modifier = Modifier.weight(1f).height(52.dp),
                     shape = RoundedCornerShape(26.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F62FE))
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text(
                         "Add Selected\nQuestions", 
-                        color = Color.White, 
+                        color = MaterialTheme.colorScheme.onPrimary, 
                         textAlign = TextAlign.Center,
                         lineHeight = 18.sp
                     )
@@ -143,9 +143,9 @@ fun QuestionPreviewScreen(
 
 @Composable
 fun QuestionCard(question: Question, onClick: () -> Unit) {
-    val bgColor = if (question.isSelected) Color(0xFF1661D7) else Color.White
-    val textColor = if (question.isSelected) Color.White else Color(0xFF1A202C)
-    val borderColor = if (question.isSelected) Color.Transparent else Color(0xFFE2E8F0)
+    val bgColor = if (question.isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+    val textColor = if (question.isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+    val borderColor = if (question.isSelected) Color.Transparent else MaterialTheme.colorScheme.outlineVariant
     
     Surface(
         color = bgColor,
@@ -161,9 +161,9 @@ fun QuestionCard(question: Question, onClick: () -> Unit) {
                 checked = question.isSelected,
                 onCheckedChange = { onClick() },
                 colors = CheckboxDefaults.colors(
-                    checkedColor = if (question.isSelected) Color.White else Color(0xFF1661D7),
-                    checkmarkColor = if (question.isSelected) Color(0xFF1661D7) else Color.White,
-                    uncheckedColor = if (question.isSelected) Color.White else Color.Gray
+                    checkedColor = if (question.isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                    checkmarkColor = if (question.isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary,
+                    uncheckedColor = if (question.isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
             Spacer(modifier = Modifier.width(8.dp))

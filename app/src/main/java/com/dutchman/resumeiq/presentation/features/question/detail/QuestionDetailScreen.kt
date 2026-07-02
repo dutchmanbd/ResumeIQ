@@ -52,10 +52,10 @@ fun QuestionDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF8F9FA))
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Color(0xFFF8F9FA)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -70,23 +70,23 @@ fun QuestionDetailScreen(
                 text = "INTERVIEW QUESTION",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1661D7),
+                color = MaterialTheme.colorScheme.primary,
                 letterSpacing = 1.sp
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = question?.question ?: "Loading...",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1A202C),
+                    color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 32.sp,
                     modifier = Modifier.padding(16.dp)
                 )
@@ -98,7 +98,7 @@ fun QuestionDetailScreen(
                 Icon(
                     Icons.Default.AutoAwesome,
                     contentDescription = null,
-                    tint = Color(0xFF1661D7),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -106,20 +106,21 @@ fun QuestionDetailScreen(
                     text = "AI Suggested Answer",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF1A202C)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             if (question?.answer.isNullOrEmpty() && !isGenerating) {
+                val outlineVariant = MaterialTheme.colorScheme.outlineVariant
                 // Empty state with dashed border
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .drawBehind {
                             drawRoundRect(
-                                color = Color(0xFFCBD5E1),
+                                color = outlineVariant,
                                 style = Stroke(
                                     width = 2.dp.toPx(),
                                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 10f), 0f)
@@ -128,7 +129,7 @@ fun QuestionDetailScreen(
                             )
                         }
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFFF1F5F9))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -137,7 +138,7 @@ fun QuestionDetailScreen(
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = Color(0xFF1661D7),
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(64.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -155,7 +156,7 @@ fun QuestionDetailScreen(
                         Text(
                             text = "Generate a tailored response based on your resume and the STAR method (Situation, Task, Action, Result).",
                             textAlign = TextAlign.Center,
-                            color = Color(0xFF4A5568),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 15.sp,
                             lineHeight = 22.sp
                         )
@@ -168,7 +169,7 @@ fun QuestionDetailScreen(
                                 .fillMaxWidth()
                                 .height(52.dp),
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F62FE))
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
                             Text("Generate AI Answer", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                         }
@@ -177,16 +178,16 @@ fun QuestionDetailScreen(
             } else if (isGenerating) {
                 // Generating state
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
-                                color = Color(0xFF1661D7),
+                                color = MaterialTheme.colorScheme.primary,
                                 strokeWidth = 2.dp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -194,14 +195,14 @@ fun QuestionDetailScreen(
                                 text = "Generating...",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Color(0xFF1661D7)
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = generatedAnswer,
                             fontSize = 16.sp,
-                            color = Color(0xFF2D3748),
+                            color = MaterialTheme.colorScheme.onSurface,
                             lineHeight = 24.sp
                         )
                     }
@@ -209,15 +210,15 @@ fun QuestionDetailScreen(
             } else {
                 // Answer filled state
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = question?.answer ?: "",
                         fontSize = 16.sp,
-                        color = Color(0xFF2D3748),
+                        color = MaterialTheme.colorScheme.onSurface,
                         lineHeight = 24.sp,
                         modifier = Modifier.padding(16.dp)
                     )

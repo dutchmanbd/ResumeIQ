@@ -8,4 +8,6 @@ sealed interface MainEvent {
     data object SignInAnonymously: MainEvent
     data class SignInWithGoogle(val context: Context): MainEvent
     data object Logout: MainEvent
+    data class ChangeTheme(val theme: String): MainEvent
+    data class ChangeLanguage(val language: String): MainEvent
 }

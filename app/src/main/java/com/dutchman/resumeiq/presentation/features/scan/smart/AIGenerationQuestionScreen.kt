@@ -108,7 +108,7 @@ fun AIGenerationQuestionScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .imePadding()
-                .background(Color(0xFFF8F9FA))
+                .background(MaterialTheme.colorScheme.background)
                 .pointerInput(Unit) {
                     detectTapGestures(onTap = {
                         focusManager.clearFocus()
@@ -139,7 +139,7 @@ fun AIGenerationQuestionScreen(
                 } else {
                     Text(
                         text = "What kind of questions would you like to generate?",
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                 }

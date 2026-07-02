@@ -119,7 +119,7 @@ fun ScanScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight()
-                    .background(Color.White, RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
                     .padding(16.dp)
                     .pointerInput(Unit) {
                         detectTransformGestures { _, pan, zoom, _ ->
@@ -174,10 +174,10 @@ fun ScanScreen(
                     }
                 },
                 actions = {},
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF8F9FA))
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Color(0xFFF8F9FA)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -192,7 +192,7 @@ fun ScanScreen(
                 text = "Extract Questions from Resume",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1A202C),
+                color = MaterialTheme.colorScheme.onSurface,
                 lineHeight = 32.sp
             )
 
@@ -201,7 +201,7 @@ fun ScanScreen(
             Text(
                 text = "Select how you want to provide your professional experience for analysis.",
                 fontSize = 14.sp,
-                color = Color(0xFF4A5568),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 20.sp
             )
 
@@ -213,12 +213,12 @@ fun ScanScreen(
                     onClick = { launcher.launch(arrayOf("application/pdf", "image/*")) },
                     icon = {
                         Surface(
-                            color = Color(0xFF1661D7),
+                            color = MaterialTheme.colorScheme.primaryContainer,
                             shape = CircleShape,
                             modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Upload, contentDescription = null, tint = Color.White)
+                                Icon(Icons.Default.Upload, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                             }
                         }
                     },
@@ -231,12 +231,12 @@ fun ScanScreen(
                     onClick = { /* Handle camera scan */ },
                     icon = {
                         Surface(
-                            color = Color(0xFF86F286),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
                             shape = CircleShape,
                             modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color(0xFF1A5A1A))
+                                Icon(Icons.Default.CameraAlt, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                             }
                         }
                     },
@@ -253,12 +253,12 @@ fun ScanScreen(
                     onClick = { jsonLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
                     icon = {
                         Surface(
-                            color = Color(0xFFFCD34D),
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
                             shape = CircleShape,
                             modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFFB45309))
+                                Icon(Icons.Default.Description, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
                             }
                         }
                     },
@@ -271,12 +271,12 @@ fun ScanScreen(
                     onClick = { viewModel.onEvent(ScanEvent.OnShowPasteDialogChanged(true)) },
                     icon = {
                         Surface(
-                            color = Color(0xFFE2E8F0),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                             shape = CircleShape,
                             modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFF4A5568))
+                                Icon(Icons.Default.Description, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     },
@@ -293,12 +293,12 @@ fun ScanScreen(
                     onClick = { navigator.navigate(AIGenerationQuestionScreenDestination) },
                     icon = {
                         Surface(
-                            color = Color(0xFFE0E7FF),
+                            color = MaterialTheme.colorScheme.primaryContainer,
                             shape = CircleShape,
                             modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = Color(0xFF4F46E5))
+                                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                             }
                         }
                     },
@@ -311,12 +311,12 @@ fun ScanScreen(
                     onClick = { navigator.navigate(QuickQuestionScreenDestination) },
                     icon = {
                         Surface(
-                            color = Color(0xFFFCE7F3),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
                             shape = CircleShape,
                             modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Outlined.QuestionMark, contentDescription = null, tint = Color(0xFFDB2777))
+                                Icon(Icons.Outlined.QuestionMark, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                             }
                         }
                     },
@@ -330,21 +330,21 @@ fun ScanScreen(
                     Icon(
                         Icons.Default.Description,
                         contentDescription = null,
-                        tint = Color(0xFF1661D7),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Resume Preview:", fontSize = 16.sp, color = Color(0xFF1A202C))
+                        Text("Resume Preview:", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                         Text(
                             uiState.fileName.ifEmpty { "resume_final_v2.pdf" },
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1A202C)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     Surface(
-                        color = Color(0xFFE2E8F0),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(
@@ -355,9 +355,9 @@ fun ScanScreen(
                                 uiState.pageCount.toString(),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.DarkGray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Text("Pages", fontSize = 10.sp, color = Color.DarkGray)
+                            Text("Pages", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -371,7 +371,7 @@ fun ScanScreen(
                             .height(160.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = Color(0xFF1661D7))
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 } else if (uiState.previewImages.isNotEmpty()) {
                     val images = uiState.previewImages
@@ -418,8 +418,8 @@ fun ScanScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Surface(
-                    color = Color(0xFFEBF3FF),
-                    border = BorderStroke(1.dp, Color(0xFFB0D0FF)),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -427,7 +427,7 @@ fun ScanScreen(
                         Icon(
                             Icons.Outlined.AutoAwesome,
                             contentDescription = null,
-                            tint = Color(0xFF1661D7),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
@@ -436,13 +436,13 @@ fun ScanScreen(
                                 "AI RECOMMENDATION",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1A202C)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 "We recommend selecting Page 1 and 2 as they contain your primary work experience and key technical achievements.",
                                 fontSize = 13.sp,
-                                color = Color(0xFF2D3748),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 lineHeight = 18.sp
                             )
                         }
@@ -462,12 +462,12 @@ fun ScanScreen(
                         .fillMaxWidth()
                         .height(52.dp),
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F62FE)),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     enabled = !uiState.isGenerating
                 ) {
                     if (uiState.isGenerating) {
                         CircularProgressIndicator(
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp
                         )
@@ -489,8 +489,8 @@ fun ScanScreen(
                 if (uiState.generatedQuestions.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Surface(
-                        color = Color.White,
-                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -498,13 +498,13 @@ fun ScanScreen(
                             Text(
                                 "Generated Questions:",
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1A202C)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 uiState.generatedQuestions,
                                 fontSize = 14.sp,
-                                color = Color(0xFF2D3748)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -515,7 +515,7 @@ fun ScanScreen(
                 Text(
                     "Estimated analysis time: 15 seconds",
                     fontSize = 11.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
 
@@ -568,8 +568,8 @@ fun OptionCard(
     subtitle: String
 ) {
     Surface(
-        color = Color(0xFFF4F6F9),
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shape = RoundedCornerShape(12.dp),
         modifier = modifier
             .fillMaxWidth()
@@ -585,13 +585,13 @@ fun OptionCard(
                 title,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF1A202C)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 subtitle,
                 fontSize = 10.sp,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         }
@@ -612,14 +612,14 @@ fun PagePreviewCard(
     // The design shows the border regardless, assuming pages exist.
     // However, if there's no bitmap, we shouldn't show the checkmark or border since it's an empty slot.
     val hasContent = bitmap != null
-    val borderColor = if (isSelected && hasContent) Color(0xFF1661D7) else Color.Transparent
+    val borderColor = if (isSelected && hasContent) MaterialTheme.colorScheme.primary else Color.Transparent
     val borderWidth = if (isSelected && hasContent) 2.dp else 0.dp
 
     Box(
         modifier = modifier
             .height(160.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFFE2E8F0))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .border(borderWidth, borderColor, RoundedCornerShape(8.dp))
             .combinedClickable(
                 enabled = hasContent,
@@ -644,14 +644,14 @@ fun PagePreviewCard(
                     .padding(8.dp)
                     .size(20.dp)
                     .clip(CircleShape)
-                    .background(if (isSelected) Color(0xFF1661D7) else Color.LightGray.copy(alpha = 0.8f)),
+                    .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center
             ) {
                 if (isSelected) {
                     Icon(
                         Icons.Default.Check,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(14.dp)
                     )
                 }
@@ -678,7 +678,7 @@ fun PagePreviewCard(
             Text(
                 "No Page",
                 modifier = Modifier.align(Alignment.Center),
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp
             )
         }

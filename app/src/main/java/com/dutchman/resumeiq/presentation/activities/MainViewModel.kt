@@ -23,7 +23,9 @@ class MainViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MainUiState(
         isModelDownloaded = userFactory.isModelDownloaded,
         isSkip = userFactory.isSkip,
-        isLoggedIn = firebaseAuthHelper.isUserLoggedIn()
+        isLoggedIn = firebaseAuthHelper.isUserLoggedIn(),
+        theme = userFactory.theme,
+        language = userFactory.language
     ))
     val uiState: StateFlow<MainUiState>
         get() = _uiState.asStateFlow()
@@ -74,6 +76,24 @@ class MainViewModel @Inject constructor(
                     state.copy(
                         isLoggedIn = false,
                         isSkip = false
+                    )
+                }
+            }
+
+            is MainEvent.ChangeTheme -> {
+                userFactory.saveTheme(event.theme)
+                _uiState.update { state ->
+                    state.copy(
+                        theme = event.theme
+                    )
+                }
+            }
+
+            is MainEvent.ChangeLanguage -> {
+                userFactory.saveLanguage(event.language)
+                _uiState.update { state ->
+                    state.copy(
+                        language = event.language
                     )
                 }
             }

@@ -92,7 +92,7 @@ fun QuickQuestionScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .imePadding()
-                .background(Color(0xFFF8F9FA))
+                .background(MaterialTheme.colorScheme.background)
                 .pointerInput(Unit) {
                     detectTapGestures(onTap = {
                         focusManager.clearFocus()
@@ -108,7 +108,7 @@ fun QuickQuestionScreen(
             ) {
                 Text(
                     text = "Type or speak your question, then save it directly to your database.",
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
             }

@@ -54,7 +54,7 @@ fun QuestionScreen(
     }
 
     Scaffold(
-        containerColor = Color(0xFFF4F6F9)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         LazyColumn(
             state = listState,
@@ -76,14 +76,14 @@ fun QuestionScreen(
                             text = interviewer?.name ?: "",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1A202C)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         if (interviewer?.designation.isNullOrEmpty()) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = interviewer?.designation ?: "",
                                 fontSize = 16.sp,
-                                color = Color.Gray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -95,7 +95,7 @@ fun QuestionScreen(
                     Text(
                         "No questions saved yet. Scan a resume to generate and save questions.",
                         modifier = Modifier.padding(16.dp),
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 16.sp
                     )
                 }
@@ -103,8 +103,8 @@ fun QuestionScreen(
                 itemsIndexed(questions.reversed()) { index, question ->
                     QuestionCard(
                         tag = question.category.ifEmpty { "General" },
-                        tagColor = Color(0xFFEBF3FF),
-                        tagTextColor = Color(0xFF1661D7),
+                        tagColor = MaterialTheme.colorScheme.primaryContainer,
+                        tagTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         question = question.question,
                         isLastRead = index == lastSavedIndex && index >= 0,
                         onClick = {
@@ -121,12 +121,12 @@ fun QuestionScreen(
                                 Text(
                                     question.difficulty.ifEmpty { "Medium" },
                                     fontSize = 12.sp,
-                                    color = Color.DarkGray
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowForward,
                                     contentDescription = null,
-                                    tint = Color(0xFF1061E3),
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -156,7 +156,7 @@ fun QuestionCard(
         border = BorderStroke(
             1.dp,
             if (isLastRead)
-                Color(0xFF1661D7) else
+                MaterialTheme.colorScheme.primary else
                 MaterialTheme.colorScheme.background
         ),
         modifier = Modifier
@@ -188,10 +188,10 @@ fun QuestionCard(
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Medium,
                 lineHeight = 24.sp,
-                color = Color(0xFF1A202C)
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color(0xFFEDF2F7), thickness = 1.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
             Spacer(modifier = Modifier.height(14.dp))
             bottomContent()
 //            if (isLastRead) {
@@ -209,7 +209,7 @@ fun QuestionCard(
 @Composable
 fun AITailoredCard() {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1661D7)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -218,13 +218,13 @@ fun AITailoredCard() {
                 Icon(
                     Icons.Default.Lightbulb,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     "AI Tailored",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -232,7 +232,7 @@ fun AITailoredCard() {
             Spacer(modifier = Modifier.height(14.dp))
             Text(
                 "How do you align your engineering decisions with long-term business goals?",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onPrimary,
                 fontSize = 21.sp,
                 fontWeight = FontWeight.Bold,
                 lineHeight = 28.sp
@@ -240,28 +240,28 @@ fun AITailoredCard() {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 "Based on your recent resume scan for the Google Staff Engineer role.",
-                color = Color.White.copy(alpha = 0.85f),
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
                 fontSize = 13.sp,
                 lineHeight = 20.sp
             )
             Spacer(modifier = Modifier.height(18.dp))
             Row {
-                Surface(color = Color(0xFF4B8DF8), shape = RoundedCornerShape(16.dp)) {
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(16.dp)) {
                     Text(
                         "Strategic",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         fontSize = 12.sp,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Medium
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Surface(color = Color(0xFF4B8DF8), shape = RoundedCornerShape(16.dp)) {
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(16.dp)) {
                     Text(
                         "Leadership",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         fontSize = 12.sp,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -273,12 +273,12 @@ fun AITailoredCard() {
 @Composable
 fun CircleTag(text: String) {
     Surface(
-        color = Color(0xFFE2E8F0),
+        color = MaterialTheme.colorScheme.surfaceVariant,
         shape = CircleShape,
         modifier = Modifier.size(26.dp)
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(text, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A202C))
+            Text(text, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

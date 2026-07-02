@@ -1,11 +1,12 @@
 package com.dutchman.resumeiq.presentation.features.more
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,22 +30,22 @@ fun MoreScreen(
     navigator: DestinationsNavigator,
     viewModel: MainViewModel
 ) {
-    var showLanguageDialog by remember { mutableStateOf(false) }
-    var showThemeDialog by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsState()
+    var expandedSetting by remember { mutableStateOf<String?>(null) }
 
-    var currentLanguage by remember { mutableStateOf("English") }
-    var currentTheme by remember { mutableStateOf("System Default") }
+    val currentLanguage = uiState.language
+    val currentTheme = uiState.theme
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Settings", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFFF8F9FA)
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
-        containerColor = Color(0xFFF8F9FA)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -57,15 +58,47 @@ fun MoreScreen(
                 icon = Icons.Default.Palette,
                 title = "Theme",
                 subtitle = currentTheme,
-                onClick = { showThemeDialog = true }
-            )
+                isExpanded = expandedSetting == "Theme",
+                onClick = { 
+                    expandedSetting = if (expandedSetting == "Theme") null else "Theme" 
+                }
+            ) {
+                Column {
+                    ThemeOption("System Default", currentTheme) { 
+                        viewModel.onEvent(MainEvent.ChangeTheme("System Default"))
+                        expandedSetting = null
+                    }
+                    ThemeOption("Light", currentTheme) { 
+                        viewModel.onEvent(MainEvent.ChangeTheme("Light"))
+                        expandedSetting = null
+                    }
+                    ThemeOption("Dark", currentTheme) { 
+                        viewModel.onEvent(MainEvent.ChangeTheme("Dark"))
+                        expandedSetting = null
+                    }
+                }
+            }
 
             SettingItem(
                 icon = Icons.Default.Language,
                 title = "Language",
                 subtitle = currentLanguage,
-                onClick = { showLanguageDialog = true }
-            )
+                isExpanded = expandedSetting == "Language",
+                onClick = { 
+                    expandedSetting = if (expandedSetting == "Language") null else "Language" 
+                }
+            ) {
+                Column {
+                    LanguageOption("English", currentLanguage) { 
+                        viewModel.onEvent(MainEvent.ChangeLanguage("English"))
+                        expandedSetting = null
+                    }
+                    LanguageOption("Bengali", currentLanguage) { 
+                        viewModel.onEvent(MainEvent.ChangeLanguage("Bengali"))
+                        expandedSetting = null
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -77,55 +110,11 @@ fun MoreScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Default.Logout, contentDescription = null)
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Logout", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         }
-    }
-
-    if (showLanguageDialog) {
-        AlertDialog(
-            onDismissRequest = { showLanguageDialog = false },
-            title = { Text("Select Language") },
-            text = {
-                Column {
-                    LanguageOption("English", currentLanguage) { 
-                        currentLanguage = "English"
-                        showLanguageDialog = false
-                    }
-                    LanguageOption("Bengali", currentLanguage) { 
-                        currentLanguage = "Bengali"
-                        showLanguageDialog = false
-                    }
-                }
-            },
-            confirmButton = {}
-        )
-    }
-
-    if (showThemeDialog) {
-        AlertDialog(
-            onDismissRequest = { showThemeDialog = false },
-            title = { Text("Select Theme") },
-            text = {
-                Column {
-                    ThemeOption("System Default", currentTheme) { 
-                        currentTheme = "System Default"
-                        showThemeDialog = false
-                    }
-                    ThemeOption("Light", currentTheme) { 
-                        currentTheme = "Light"
-                        showThemeDialog = false
-                    }
-                    ThemeOption("Dark", currentTheme) { 
-                        currentTheme = "Dark"
-                        showThemeDialog = false
-                    }
-                }
-            },
-            confirmButton = {}
-        )
     }
 }
 
@@ -134,41 +123,56 @@ fun SettingItem(
     icon: ImageVector,
     title: String,
     subtitle: String,
-    onClick: () -> Unit
+    isExpanded: Boolean,
+    onClick: () -> Unit,
+    expandedContent: @Composable () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color(0xFF1661D7),
-                modifier = Modifier.size(28.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = title,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1A202C)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
                 )
-                Text(
-                    text = subtitle,
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(
+                        text = title,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = subtitle,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            AnimatedVisibility(visible = isExpanded) {
+                Column {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Box(modifier = Modifier.padding(16.dp)) {
+                        expandedContent()
+                    }
+                }
             }
         }
     }

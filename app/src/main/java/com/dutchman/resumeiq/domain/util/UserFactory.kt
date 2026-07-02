@@ -13,6 +13,8 @@ class UserFactory(
         private const val PREF_INTERVIEWER_NAME = "pref_interviewer_name"
         private const val PREF_INTERVIEWER_DESIGNATION = "pref_interviewer_designation"
         private const val PREF_INTERVIEWER_MOBILE = "pref_interviewer_mobile"
+        private const val PREF_THEME = "pref_theme"
+        private const val PREF_LANGUAGE = "pref_language"
     }
 
     val isSkip: Boolean
@@ -67,5 +69,19 @@ class UserFactory(
         sharedPref.write(PREF_INTERVIEWER_NAME, interviewer.name)
         sharedPref.write(PREF_INTERVIEWER_DESIGNATION, interviewer.designation)
         sharedPref.write(PREF_INTERVIEWER_MOBILE, interviewer.mobile)
+    }
+
+    val theme: String
+        get() = sharedPref.read(PREF_THEME, "System Default")
+
+    fun saveTheme(theme: String) {
+        sharedPref.write(PREF_THEME, theme)
+    }
+
+    val language: String
+        get() = sharedPref.read(PREF_LANGUAGE, "English")
+
+    fun saveLanguage(language: String) {
+        sharedPref.write(PREF_LANGUAGE, language)
     }
 }
