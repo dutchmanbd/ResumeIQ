@@ -100,7 +100,7 @@ fun QuestionScreen(
                     )
                 }
             } else {
-                itemsIndexed(questions) { index, question ->
+                itemsIndexed(questions.reversed()) { index, question ->
                     QuestionCard(
                         tag = question.category.ifEmpty { "General" },
                         tagColor = Color(0xFFEBF3FF),

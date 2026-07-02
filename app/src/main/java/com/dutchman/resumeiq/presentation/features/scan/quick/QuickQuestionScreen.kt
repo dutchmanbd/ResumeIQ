@@ -22,6 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -45,6 +48,7 @@ fun QuickQuestionScreen(
     val uiState by viewModel.uiState.collectAsState()
     
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
@@ -89,6 +93,11 @@ fun QuickQuestionScreen(
                 .padding(paddingValues)
                 .imePadding()
                 .background(Color(0xFFF8F9FA))
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        focusManager.clearFocus()
+                    })
+                }
         ) {
             Box(
                 modifier = Modifier
@@ -179,6 +188,7 @@ fun QuickQuestionScreen(
                     } else {
                         IconButton(
                             onClick = { 
+                                focusManager.clearFocus()
                                 viewModel.onEvent(ScanEvent.OnSaveQuickQuestion(uiState.promptText) {
                                     viewModel.onEvent(ScanEvent.OnPromptTextChanged(""))
                                     navController.navigateUp()

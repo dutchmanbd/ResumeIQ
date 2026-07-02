@@ -20,6 +20,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,6 +52,7 @@ fun AIGenerationQuestionScreen(
     val uiState by viewModel.uiState.collectAsState()
     
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
@@ -105,6 +109,11 @@ fun AIGenerationQuestionScreen(
                 .padding(paddingValues)
                 .imePadding()
                 .background(Color(0xFFF8F9FA))
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        focusManager.clearFocus()
+                    })
+                }
         ) {
             Box(
                 modifier = Modifier
@@ -235,6 +244,7 @@ fun AIGenerationQuestionScreen(
                     } else {
                         IconButton(
                             onClick = { 
+                                focusManager.clearFocus()
                                 if (!uiState.isGenerating) {
                                     viewModel.onEvent(ScanEvent.OnGenerateQuestionsFromPrompt)
                                 } else {
