@@ -9,6 +9,7 @@ import com.dutchman.resumeiq.data.local.entity.toDomain
 import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
 import com.dutchman.resumeiq.domain.models.Question
 import com.dutchman.resumeiq.domain.util.FileStorage
+import com.dutchman.resumeiq.domain.util.UserFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +26,8 @@ class QuestionDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val questionDao: QuestionDao,
     private val gemmaInferenceHelper: GemmaInferenceHelper,
-    private val fileStorage: FileStorage
+    private val fileStorage: FileStorage,
+    private val userFactory: UserFactory
 ) : ViewModel() {
 
     private val questionId: Long = checkNotNull(savedStateHandle["id"])
@@ -43,6 +45,9 @@ class QuestionDetailViewModel @Inject constructor(
 
     private val _generatedAnswer = MutableStateFlow("")
     val generatedAnswer: StateFlow<String> = _generatedAnswer.asStateFlow()
+
+    val externalApp: String
+        get() = userFactory.externalApp
 
     fun generateAiAnswer() {
         val currentQuestion = question.value ?: return
@@ -90,6 +95,20 @@ class QuestionDetailViewModel @Inject constructor(
             } finally {
                 _isGenerating.value = false
             }
+        }
+    }
+
+    fun updateAnswer(newAnswer: String) {
+        val currentQuestion = question.value ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            val updatedEntity = QuestionEntity(
+                id = currentQuestion.id,
+                question = currentQuestion.question,
+                answer = newAnswer,
+                difficulty = currentQuestion.difficulty,
+                category = currentQuestion.category
+            )
+            questionDao.updateQuestion(updatedEntity)
         }
     }
 }

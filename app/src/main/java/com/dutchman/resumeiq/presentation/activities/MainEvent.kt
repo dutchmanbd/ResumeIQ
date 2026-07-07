@@ -10,4 +10,5 @@ sealed interface MainEvent {
     data object Logout: MainEvent
     data class ChangeTheme(val theme: String): MainEvent
     data class ChangeLanguage(val language: String): MainEvent
+    data class ChangeExternalApp(val appName: String): MainEvent
 }

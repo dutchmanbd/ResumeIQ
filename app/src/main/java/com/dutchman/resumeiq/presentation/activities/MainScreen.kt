@@ -11,6 +11,7 @@ import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.FabPosition
 import androidx.compose.material.Scaffold
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
@@ -52,6 +53,7 @@ fun MainScreen(
             currentRoute == MoreScreenDestination.route
 
     Scaffold(
+        modifier = Modifier.navigationBarsPadding(),
         bottomBar = {
             if (showBottomBar) {
                 BottomAppBar(
@@ -130,7 +132,8 @@ fun MainScreen(
             }
         },
         floatingActionButtonPosition = FabPosition.Center,
-        isFloatingActionButtonDocked = true
+        isFloatingActionButtonDocked = true,
+        backgroundColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         val start = if (uiState.isLoggedIn) {
             if (uiState.isModelDownloaded) {

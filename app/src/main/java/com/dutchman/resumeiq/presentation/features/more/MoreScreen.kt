@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -95,6 +96,27 @@ fun MoreScreen(
                     }
                     LanguageOption("Bengali", currentLanguage) { 
                         viewModel.onEvent(MainEvent.ChangeLanguage("Bengali"))
+                        expandedSetting = null
+                    }
+                }
+            }
+
+            SettingItem(
+                icon = Icons.Default.Apps,
+                title = "External App",
+                subtitle = uiState.externalApp,
+                isExpanded = expandedSetting == "ExternalApp",
+                onClick = { 
+                    expandedSetting = if (expandedSetting == "ExternalApp") null else "ExternalApp" 
+                }
+            ) {
+                Column {
+                    AppOption("ChatGPT", uiState.externalApp) { 
+                        viewModel.onEvent(MainEvent.ChangeExternalApp("ChatGPT"))
+                        expandedSetting = null
+                    }
+                    AppOption("Gemini", uiState.externalApp) { 
+                        viewModel.onEvent(MainEvent.ChangeExternalApp("Gemini"))
                         expandedSetting = null
                     }
                 }
@@ -211,5 +233,23 @@ fun ThemeOption(theme: String, selectedTheme: String, onSelect: () -> Unit) {
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(theme, fontSize = 16.sp)
+    }
+}
+
+@Composable
+fun AppOption(app: String, selectedApp: String, onSelect: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onSelect)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = app == selectedApp,
+            onClick = onSelect
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(app, fontSize = 16.sp)
     }
 }

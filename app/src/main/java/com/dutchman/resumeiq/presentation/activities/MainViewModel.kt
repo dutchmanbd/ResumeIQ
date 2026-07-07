@@ -25,7 +25,8 @@ class MainViewModel @Inject constructor(
         isSkip = userFactory.isSkip,
         isLoggedIn = firebaseAuthHelper.isUserLoggedIn(),
         theme = userFactory.theme,
-        language = userFactory.language
+        language = userFactory.language,
+        externalApp = userFactory.externalApp
     ))
     val uiState: StateFlow<MainUiState>
         get() = _uiState.asStateFlow()
@@ -94,6 +95,15 @@ class MainViewModel @Inject constructor(
                 _uiState.update { state ->
                     state.copy(
                         language = event.language
+                    )
+                }
+            }
+
+            is MainEvent.ChangeExternalApp -> {
+                userFactory.saveExternalApp(event.appName)
+                _uiState.update { state ->
+                    state.copy(
+                        externalApp = event.appName
                     )
                 }
             }

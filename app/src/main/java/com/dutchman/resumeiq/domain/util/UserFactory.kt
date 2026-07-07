@@ -15,6 +15,7 @@ class UserFactory(
         private const val PREF_INTERVIEWER_MOBILE = "pref_interviewer_mobile"
         private const val PREF_THEME = "pref_theme"
         private const val PREF_LANGUAGE = "pref_language"
+        private const val PREF_EXTERNAL_APP = "pref_external_app"
     }
 
     val isSkip: Boolean
@@ -83,5 +84,12 @@ class UserFactory(
 
     fun saveLanguage(language: String) {
         sharedPref.write(PREF_LANGUAGE, language)
+    }
+
+    val externalApp: String
+        get() = sharedPref.read(PREF_EXTERNAL_APP, "ChatGPT")
+
+    fun saveExternalApp(appName: String) {
+        sharedPref.write(PREF_EXTERNAL_APP, appName)
     }
 }

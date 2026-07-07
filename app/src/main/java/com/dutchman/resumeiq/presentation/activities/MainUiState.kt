@@ -6,4 +6,5 @@ data class MainUiState(
     val isModelDownloaded: Boolean = false,
     val theme: String = "System Default",
     val language: String = "English",
+    val externalApp: String = "ChatGPT",
 )
