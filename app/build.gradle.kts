@@ -13,6 +13,15 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        create("release") {
+            storeFile =
+                file("/Users/dutchman/AndroidStudioProjects/android_apk_keystore/resumeiq.jks")
+            storePassword = "ResumeIQ2026Password"
+            keyPassword = "ResumeIQ2026Password"
+            keyAlias = "ResumeIQAlias"
+        }
+    }
     namespace = "com.dutchman.resumeiq"
     compileSdk {
         version = release(36) {
@@ -35,6 +44,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
