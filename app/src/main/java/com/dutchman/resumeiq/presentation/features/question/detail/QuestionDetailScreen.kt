@@ -313,6 +313,14 @@ fun QuestionDetailScreen(
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
+                    Text(
+                        text = "Update answer with",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Start,
