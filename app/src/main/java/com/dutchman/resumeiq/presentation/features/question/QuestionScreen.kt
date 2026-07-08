@@ -32,6 +32,15 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.generated.destinations.QuestionDetailScreenDestination
 import androidx.compose.foundation.clickable
+import com.ramcosta.composedestinations.generated.destinations.ScanScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.MoreScreenDestination
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
@@ -54,14 +63,28 @@ fun QuestionScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Text("Questions") },
+                actions = {
+                    IconButton(onClick = { navigator.navigate(MoreScreenDestination) }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                }
+            )
+        }
     ) { paddingValues ->
-        LazyColumn(
-            state = listState,
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp),
+        ) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
@@ -132,6 +155,24 @@ fun QuestionScreen(
                             }
                         }
                     )
+                }
+                }
+            }
+            
+            AnimatedVisibility(
+                visible = !listState.isScrollInProgress,
+                enter = slideInVertically(initialOffsetY = { it * 2 }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it * 2 }) + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 16.dp)
+            ) {
+                FloatingActionButton(
+                    onClick = { navigator.navigate(ScanScreenDestination) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Scan", tint = Color.White)
                 }
             }
         }
