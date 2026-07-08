@@ -191,15 +191,11 @@ fun QuestionCard(
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.background
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(
-            1.dp,
-            if (isLastRead)
-                MaterialTheme.colorScheme.primary else
-                MaterialTheme.colorScheme.background
-        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        border = if (isLastRead) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
