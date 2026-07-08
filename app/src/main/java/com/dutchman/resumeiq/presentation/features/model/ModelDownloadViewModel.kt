@@ -73,7 +73,8 @@ class ModelDownloadViewModel @Inject constructor(
 
         // Observe the work progress
         viewModelScope.launch {
-            workManager.getWorkInfoByIdLiveData(downloadRequest.id).observeForever { workInfo ->
+            workManager.getWorkInfosForUniqueWorkLiveData("ModelDownloadWork").observeForever { workInfos ->
+                val workInfo = workInfos?.firstOrNull { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED } ?: workInfos?.firstOrNull()
                 if (workInfo != null) {
                     val progress = workInfo.progress.getInt(ModelDownloadWorker.KEY_PROGRESS, 0)
                     val currentBytes = workInfo.progress.getLong(ModelDownloadWorker.KEY_DOWNLOADED_BYTES, 0L)

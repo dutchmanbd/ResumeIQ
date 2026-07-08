@@ -289,7 +289,7 @@ fun ModelDownloadScreenRoot(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = if (state.speedMbPerSec != "0.00") "Speed: ${state.speedMbPerSec} MB/s" else "Calculating speed...",
+                            text = "Speed: ${state.speedMbPerSec} MB/s",
                             style = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

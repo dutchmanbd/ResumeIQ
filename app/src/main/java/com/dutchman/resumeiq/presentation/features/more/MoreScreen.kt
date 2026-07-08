@@ -184,21 +184,12 @@ fun MoreScreen(
                 onClick = { viewModel.onEvent(MainEvent.ExportData(context, share = true)) }
             )
 
-            Spacer(modifier = Modifier.weight(1f))
-
-            OutlinedButton(
-                onClick = { showLogoutDialog = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Logout", style = MaterialTheme.typography.titleMedium)
-            }
+            ActionItem(
+                icon = Icons.AutoMirrored.Filled.Logout,
+                title = "Logout",
+                subtitle = "Sign out of your account",
+                onClick = { showLogoutDialog = true }
+            )
         }
     }
 }
