@@ -11,4 +11,5 @@ sealed interface MainEvent {
     data class ChangeTheme(val theme: String): MainEvent
     data class ChangeLanguage(val language: String): MainEvent
     data class ChangeExternalApp(val appName: String): MainEvent
+    data class ExportData(val context: Context, val share: Boolean): MainEvent
 }

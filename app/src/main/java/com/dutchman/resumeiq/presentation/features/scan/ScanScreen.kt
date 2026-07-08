@@ -1,8 +1,10 @@
 package com.dutchman.resumeiq.presentation.features.scan
 
 import android.graphics.Bitmap
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -152,6 +154,9 @@ fun ScanScreen(
         }
     }
 
+    BackHandler(enabled = uiState.showPreview) {
+        viewModel.onEvent(ScanEvent.OnClearPreview)
+    }
 
     Scaffold(
         topBar = {
@@ -165,7 +170,11 @@ fun ScanScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        navigator.navigateUp()
+                        if (uiState.showPreview) {
+                            viewModel.onEvent(ScanEvent.OnClearPreview)
+                        } else {
+                            navigator.navigateUp()
+                        }
                     }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
@@ -188,8 +197,10 @@ fun ScanScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = "Extract Questions from Resume",
+            AnimatedVisibility(visible = !uiState.showPreview) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Extract Questions from Resume",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -323,6 +334,8 @@ fun ScanScreen(
                     title = "Quick Question",
                     subtitle = "Single targeted"
                 )
+            }
+                }
             }
 
             if (uiState.showPreview) {

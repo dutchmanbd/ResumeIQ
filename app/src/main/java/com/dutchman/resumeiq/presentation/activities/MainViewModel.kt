@@ -11,13 +11,25 @@ import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.dutchman.resumeiq.domain.util.FirebaseAuthHelper
+import com.dutchman.resumeiq.data.local.AppDatabase
+import androidx.core.content.FileProvider
+import android.os.Environment
+import android.widget.Toast
+import android.content.Intent
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.Date
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val userFactory: UserFactory,
     private val fileStorage: FileStorage,
-    private val firebaseAuthHelper: FirebaseAuthHelper
+    private val firebaseAuthHelper: FirebaseAuthHelper,
+    private val appDatabase: AppDatabase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState(
@@ -105,6 +117,55 @@ class MainViewModel @Inject constructor(
                     state.copy(
                         externalApp = event.appName
                     )
+                }
+            }
+
+            is MainEvent.ExportData -> {
+                val context = event.context
+                viewModelScope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            appDatabase.checkpoint()
+                            val dbFile = context.getDatabasePath(AppDatabase.DATABASE_NAME)
+                            
+                            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                            val fileName = "ResumeIQ_$timestamp.db"
+                            
+                            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                            val exportFile = File(downloadsDir, fileName)
+                            
+                            dbFile.copyTo(exportFile, overwrite = true)
+                            
+                            withContext(Dispatchers.Main) {
+                                if (event.share) {
+                                    // For sharing, we need to copy it to a cache path compatible with FileProvider
+                                    val cacheFile = File(File(context.cacheDir, "shared_db").apply { mkdirs() }, fileName)
+                                    exportFile.copyTo(cacheFile, overwrite = true)
+                                    
+                                    val uri = FileProvider.getUriForFile(
+                                        context, 
+                                        "${context.packageName}.provider", 
+                                        cacheFile
+                                    )
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "application/octet-stream"
+                                        putExtra(Intent.EXTRA_STREAM, uri)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    val chooser = Intent.createChooser(intent, "Share Database")
+                                    chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    context.startActivity(chooser)
+                                } else {
+                                    Toast.makeText(context, "Exported to Downloads: $fileName", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
                 }
             }
         }

@@ -95,6 +95,18 @@ class ScanViewModel @Inject constructor(
             }
             is ScanEvent.OnGenerateQuestionsFromPrompt -> generateQuestions()
             is ScanEvent.OnSaveQuickQuestion -> saveQuickQuestion(event.question, event.onSaved)
+            is ScanEvent.OnClearPreview -> {
+                _uiState.update { 
+                    it.copy(
+                        showPreview = false, 
+                        previewImages = emptyList(), 
+                        selectedPages = listOf(0), 
+                        fileName = "", 
+                        pageCount = 0,
+                        generatedQuestions = ""
+                    ) 
+                }
+            }
         }
     }
 
