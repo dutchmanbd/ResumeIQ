@@ -48,6 +48,9 @@ class QuestionDetailViewModel @Inject constructor(
 
     val externalApp: String
         get() = userFactory.externalApp
+        
+    val isModelDownloaded: Boolean
+        get() = userFactory.isModelDownloaded
 
     fun generateAiAnswer() {
         val currentQuestion = question.value ?: return

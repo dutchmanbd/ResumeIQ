@@ -1,6 +1,7 @@
 package com.dutchman.resumeiq.presentation.features.model
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.Constraints
@@ -18,6 +19,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
@@ -29,7 +31,8 @@ data class DownloadState(
     val speedMbPerSec: String = "0.0",
     val status: DownloadStatus = DownloadStatus.IDLE,
     val estimatedTimeRemaining: String = "",
-    val fileName: String = ""
+    val fileName: String = "",
+    val hasEnoughStorage: Boolean = true
 )
 
 enum class DownloadStatus {
@@ -47,6 +50,34 @@ class ModelDownloadViewModel @Inject constructor(
     private val workManager = WorkManager.getInstance(application)
     private val _downloadState = MutableStateFlow(DownloadState())
     val downloadState: StateFlow<DownloadState> = _downloadState.asStateFlow()
+
+    init {
+        checkStorage()
+    }
+
+    private fun checkStorage() {
+        val stat = android.os.StatFs(android.os.Environment.getDataDirectory().path)
+        val availableBytes = stat.availableBlocksLong * stat.blockSizeLong
+        val requiredBytes = 2.5 * 1024 * 1024 * 1024 // 2.5 GB
+        _downloadState.update { it.copy(hasEnoughStorage = availableBytes > requiredBytes) }
+    }
+
+    fun skipDownload() {
+        userFactory.saveIsSkip(true)
+        userFactory.saveIsModelDownloaded(false)
+        _downloadState.update { it.copy(status = DownloadStatus.SUCCESS) } // or add a SKIP status if needed, but SUCCESS will trigger navigation.
+    }
+
+    fun stopDownload() {
+        workManager.cancelUniqueWork("ModelDownloadWork")
+        val downloadId = userFactory.getDownloadId(FileStorage.FILE_NAME)
+        if (downloadId != -1L) {
+            val downloadManager = getApplication<Application>().getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+            downloadManager.remove(downloadId)
+            userFactory.removeDownloadId(FileStorage.FILE_NAME)
+        }
+        _downloadState.update { it.copy(status = DownloadStatus.IDLE, progress = 0, currentBytes = 0) }
+    }
 
     fun startDownload(modelUrl: String = Constants.MODEL_4B) {
         _downloadState.value = _downloadState.value.copy(fileName = FileStorage.DISPLAY_NAME)

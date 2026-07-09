@@ -57,10 +57,10 @@ fun MainScreen(
         backgroundColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         val start = if (uiState.isLoggedIn) {
-            if (uiState.isModelDownloaded) {
+            if (uiState.isModelDownloaded || uiState.isSkip) {
                 QuestionScreenDestination
             } else {
-                ModelDownloadScreenDestination
+                ModelDownloadScreenDestination()
             }
         } else {
             LoginScreenDestination

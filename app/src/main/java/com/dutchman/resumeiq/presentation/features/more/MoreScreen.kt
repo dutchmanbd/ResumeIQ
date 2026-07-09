@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Share
@@ -29,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.dutchman.resumeiq.presentation.activities.MainEvent
 import com.dutchman.resumeiq.presentation.activities.MainViewModel
 import com.ramcosta.composedestinations.generated.destinations.ImportScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.ModelDownloadScreenDestination
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -141,6 +143,13 @@ fun MoreScreen(
                     }
                 }
             }
+
+            ActionItem(
+                icon = Icons.Default.CloudDownload,
+                title = "Model Download",
+                subtitle = "Manage AI model for offline use",
+                onClick = { navigator.navigate(ModelDownloadScreenDestination(showBackButton = true)) }
+            )
 
             SettingItem(
                 icon = Icons.Default.Apps,

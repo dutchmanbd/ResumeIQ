@@ -50,6 +50,10 @@ class ScanViewModel @Inject constructor(
         
     private var speechJob: Job? = null
 
+    init {
+        _uiState.update { it.copy(isModelDownloaded = userFactory.isModelDownloaded) }
+    }
+
     fun onEvent(event: ScanEvent) {
         when (event) {
             is ScanEvent.OnFileSelected -> processFile(event.uri, event.context)

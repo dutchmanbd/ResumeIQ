@@ -13,6 +13,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +49,7 @@ import com.ramcosta.composedestinations.generated.destinations.QuestionScreenDes
 fun ModelDownloadScreen(
     navigator: DestinationsNavigator,
     viewModel: MainViewModel,
+    showBackButton: Boolean = false,
     downloadViewModel: ModelDownloadViewModel = hiltViewModel()
 ) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -64,10 +67,7 @@ fun ModelDownloadScreen(
     val state by downloadViewModel.downloadState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        // Start download automatically
-        if (state.status == DownloadStatus.IDLE) {
-            downloadViewModel.startDownload()
-        }
+        // We no longer start download automatically, wait for user action
     }
 
     LaunchedEffect(state.status) {
@@ -83,7 +83,12 @@ fun ModelDownloadScreen(
 
     ModelDownloadScreenRoot(
         state = state,
-        onRetry = { downloadViewModel.startDownload() }
+        showBackButton = showBackButton,
+        onBackClick = { navigator.popBackStack() },
+        onRetry = { downloadViewModel.startDownload() },
+        onDownload = { downloadViewModel.startDownload() },
+        onSkip = { downloadViewModel.skipDownload() },
+        onStop = { downloadViewModel.stopDownload() }
     )
 }
 
@@ -91,7 +96,12 @@ fun ModelDownloadScreen(
 @Composable
 fun ModelDownloadScreenRoot(
     state: DownloadState,
-    onRetry: () -> Unit = {}
+    showBackButton: Boolean = false,
+    onBackClick: () -> Unit = {},
+    onRetry: () -> Unit = {},
+    onDownload: () -> Unit = {},
+    onSkip: () -> Unit = {},
+    onStop: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -102,6 +112,13 @@ fun ModelDownloadScreenRoot(
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
+                },
+                navigationIcon = {
+                    if (showBackButton) {
+                        IconButton(onClick = onBackClick) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -172,15 +189,16 @@ fun ModelDownloadScreenRoot(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Progress Cluster
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            if (state.status == DownloadStatus.DOWNLOADING) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                 Column(
                     modifier = Modifier.padding(24.dp)
                 ) {
@@ -294,6 +312,72 @@ fun ModelDownloadScreenRoot(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+            }
+        }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            if (state.status == DownloadStatus.IDLE || state.status == DownloadStatus.DOWNLOADING) {
+                if (state.status == DownloadStatus.IDLE) {
+                    if (!state.hasEnoughStorage) {
+                        Text(
+                            text = "Insufficient storage. 2.5 GB required.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+
+                    Button(
+                        onClick = onDownload,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = state.hasEnoughStorage,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Text(
+                            text = "Download Model (~2.5 GB)",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+                } else if (state.status == DownloadStatus.DOWNLOADING) {
+                    Button(
+                        onClick = onStop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text(
+                            text = "Stop Download",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+                }
+
+                OutlinedButton(
+                    onClick = onSkip,
+                    enabled = state.status != DownloadStatus.DOWNLOADING,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = "Skip for Now",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
                 }
             }
 

@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.alpha
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -234,7 +235,8 @@ fun ScanScreen(
                         }
                     },
                     title = "Upload Resume",
-                    subtitle = "PDF or Image"
+                    subtitle = "PDF or Image",
+                    enabled = uiState.isModelDownloaded
                 )
                 
                 OptionCard(
@@ -252,7 +254,8 @@ fun ScanScreen(
                         }
                     },
                     title = "Scan Resume",
-                    subtitle = "Point camera"
+                    subtitle = "Point camera",
+                    enabled = uiState.isModelDownloaded
                 )
             }
 
@@ -314,7 +317,8 @@ fun ScanScreen(
                         }
                     },
                     title = "AI Smart Gen",
-                    subtitle = "Full questions set"
+                    subtitle = "Full questions set",
+                    enabled = uiState.isModelDownloaded
                 )
 
                 OptionCard(
@@ -578,7 +582,8 @@ fun OptionCard(
     onClick: () -> Unit,
     icon: @Composable () -> Unit,
     title: String,
-    subtitle: String
+    subtitle: String,
+    enabled: Boolean = true
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -586,7 +591,8 @@ fun OptionCard(
         shape = RoundedCornerShape(12.dp),
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .alpha(if (enabled) 1f else 0.5f)
+            .clickable(enabled = enabled) { onClick() }
     ) {
         Column(
             modifier = Modifier.padding(vertical = 24.dp),

@@ -84,7 +84,7 @@ fun LoginScreen(
                 }
             } else {
                 navigator.navigate(
-                    ModelDownloadScreenDestination
+                    ModelDownloadScreenDestination()
                 )
             }
         }
