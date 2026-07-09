@@ -222,7 +222,13 @@ fun ScanScreen(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OptionCard(
                     modifier = Modifier.weight(1f),
-                    onClick = { launcher.launch(arrayOf("application/pdf", "image/*")) },
+                    onClick = { 
+                        if (uiState.isModelDownloaded) {
+                            launcher.launch(arrayOf("application/pdf", "image/*"))
+                        } else {
+                            android.widget.Toast.makeText(context, "Please download model first", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     icon = {
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer,
@@ -235,13 +241,18 @@ fun ScanScreen(
                         }
                     },
                     title = "Upload Resume",
-                    subtitle = "PDF or Image",
-                    enabled = uiState.isModelDownloaded
+                    subtitle = "PDF or Image"
                 )
                 
                 OptionCard(
                     modifier = Modifier.weight(1f),
-                    onClick = { /* Handle camera scan */ },
+                    onClick = {
+                        if (uiState.isModelDownloaded) {
+                            /* Handle camera scan */ 
+                        } else {
+                            android.widget.Toast.makeText(context, "Please download model first", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     icon = {
                         Surface(
                             color = MaterialTheme.colorScheme.secondaryContainer,
@@ -254,8 +265,7 @@ fun ScanScreen(
                         }
                     },
                     title = "Scan Resume",
-                    subtitle = "Point camera",
-                    enabled = uiState.isModelDownloaded
+                    subtitle = "Point camera"
                 )
             }
 
@@ -264,7 +274,7 @@ fun ScanScreen(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OptionCard(
                     modifier = Modifier.weight(1f),
-                    onClick = { jsonLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                    onClick = { jsonLauncher.launch(arrayOf("application/json")) },
                     icon = {
                         Surface(
                             color = MaterialTheme.colorScheme.tertiaryContainer,
@@ -304,7 +314,13 @@ fun ScanScreen(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OptionCard(
                     modifier = Modifier.weight(1f),
-                    onClick = { navigator.navigate(AIGenerationQuestionScreenDestination) },
+                    onClick = {
+                        if (uiState.isModelDownloaded) {
+                            navigator.navigate(AIGenerationQuestionScreenDestination)
+                        } else {
+                            android.widget.Toast.makeText(context, "Please download model first", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     icon = {
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer,
@@ -317,8 +333,7 @@ fun ScanScreen(
                         }
                     },
                     title = "AI Smart Gen",
-                    subtitle = "Full questions set",
-                    enabled = uiState.isModelDownloaded
+                    subtitle = "Full questions set"
                 )
 
                 OptionCard(
