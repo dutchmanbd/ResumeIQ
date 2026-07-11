@@ -68,6 +68,17 @@ class ScanViewModel @Inject constructor(
             is ScanEvent.OnSaveSelectedQuestions -> saveSelectedQuestions(event.onSaved)
             is ScanEvent.OnJsonFileSelected -> processJsonFile(event.uri, event.context)
             is ScanEvent.OnJsonTextPasted -> parseGeneratedQuestions(event.json)
+            is ScanEvent.OnScannedImageReady -> {
+                _uiState.update {
+                    it.copy(
+                        isProcessing = false,
+                        showPreview = true,
+                        fileName = "scanned_image.jpg",
+                        pageCount = 1,
+                        previewImages = listOf(event.bitmap)
+                    )
+                }
+            }
             is ScanEvent.OnSelectedImageBitmapChanged -> {
                 _uiState.update { it.copy(selectedImageBitmap = event.bitmap) }
             }

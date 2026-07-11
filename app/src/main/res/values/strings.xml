@@ -1,4 +1,17 @@
 <resources>
     <string name="app_name">ResumeIQ</string>
     <string name="default_web_client_id">1099189657390-1anr3g5o1220ndaf4akn54c2oqpqdgbi.apps.googleusercontent.com</string>
+    <string name="scanner_title_camera">Camera</string>
+    <string name="scanner_title_image">Image</string>
+    <string name="scanner_need_camera_permission">Camera access is required to scan documents. Grant permission to continue.</string>
+    <string name="scanner_rotate">Rotate</string>
+    <string name="scanner_crop">Crop</string>
+    <string name="scanner_next">Next</string>
+    <string name="scanner_cd_back">Back</string>
+    <string name="scanner_cd_flash">Toggle flash</string>
+    <string name="scanner_cd_apply">Apply and attach</string>
+    <string name="scanner_cd_rotate_ccw">Rotate counter-clockwise</string>
+    <string name="scanner_cd_rotate_cw">Rotate clockwise</string>
+    <string name="scanner_cd_crop">Crop mode</string>
+    <string name="scanner_cd_next">Save and continue</string>
 </resources>

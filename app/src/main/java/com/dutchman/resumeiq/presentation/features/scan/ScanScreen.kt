@@ -1,7 +1,10 @@
 package com.dutchman.resumeiq.presentation.features.scan
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -69,6 +72,7 @@ import com.dutchman.resumeiq.presentation.features.scan.preview.QuestionPreviewS
 import com.ramcosta.composedestinations.generated.destinations.AIGenerationQuestionScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.QuestionPreviewScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.QuickQuestionScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.ScannerScreenDestination
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -92,6 +96,16 @@ fun ScanScreen(
     }
 
     val coroutineScope = rememberCoroutineScope()
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            navigator.navigate(ScannerScreenDestination)
+        } else {
+            android.widget.Toast.makeText(context, "Camera permission is required to scan resumes", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
 
     val jsonLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -248,7 +262,11 @@ fun ScanScreen(
                     modifier = Modifier.weight(1f),
                     onClick = {
                         if (uiState.isModelDownloaded) {
-                            /* Handle camera scan */ 
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                navigator.navigate(ScannerScreenDestination)
+                            } else {
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
                         } else {
                             android.widget.Toast.makeText(context, "Please download model first", android.widget.Toast.LENGTH_SHORT).show()
                         }
