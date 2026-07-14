@@ -1,5 +1,12 @@
 package com.dutchman.resumeiq.presentation.features.question.detail
 
+import android.app.Application
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
+import android.graphics.Bitmap
+import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,51 +16,122 @@ import com.dutchman.resumeiq.data.local.entity.toDomain
 import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
 import com.dutchman.resumeiq.domain.models.Question
 import com.dutchman.resumeiq.domain.util.FileStorage
+import com.dutchman.resumeiq.domain.util.TranslatorManager
 import com.dutchman.resumeiq.domain.util.UserFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class QuestionDetailViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle,
+    private val application: Application,
     private val questionDao: QuestionDao,
     private val gemmaInferenceHelper: GemmaInferenceHelper,
+    private val translatorManager: TranslatorManager,
+    private val clipboardManager: ClipboardManager,
     private val fileStorage: FileStorage,
     private val userFactory: UserFactory
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val questionId: Long = checkNotNull(savedStateHandle["id"])
 
-    val question: StateFlow<Question?> = questionDao.getQuestionById(questionId)
-        .map { entity -> entity?.toDomain() }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
-        )
-
     private val _isGenerating = MutableStateFlow(false)
-    val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
-
     private val _generatedAnswer = MutableStateFlow("")
-    val generatedAnswer: StateFlow<String> = _generatedAnswer.asStateFlow()
+    private val _copyText = MutableStateFlow("")
 
-    val externalApp: String
-        get() = userFactory.externalApp
-        
-    val isModelDownloaded: Boolean
-        get() = userFactory.isModelDownloaded
+    val state = combine(
+        questionDao.getQuestionById(questionId).map { it?.toDomain() },
+        _isGenerating,
+        _generatedAnswer,
+        _copyText
+    ) { question, isGenerating, generatedAnswer, copyText ->
+        Log.e("QuestionDetail", "copyText: $copyText")
+        QuestionDetailState(
+            question = question,
+            isGenerating = isGenerating,
+            generatedAnswer = generatedAnswer,
+            copyText = copyText,
+            externalApp = userFactory.externalApp,
+            isModelDownloaded = userFactory.isModelDownloaded,
+            translateIcon = translatorManager.iconBitmap
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = QuestionDetailState(
+            externalApp = userFactory.externalApp,
+            isModelDownloaded = userFactory.isModelDownloaded,
+            translateIcon = translatorManager.iconBitmap
+        )
+    )
 
-    fun generateAiAnswer() {
-        val currentQuestion = question.value ?: return
+
+    val listener = ClipboardManager.OnPrimaryClipChangedListener {
+        val clip = clipboardManager.primaryClip
+        if (clip != null && clip.itemCount > 0) {
+            val item = clip.getItemAt(0)
+            val text = item.text?.toString() ?: ""
+            _copyText.update { text }
+        }
+    }
+
+    init {
+        clipboardManager.addPrimaryClipChangedListener(listener)
+    }
+
+
+    override fun onCleared() {
+        clipboardManager.removePrimaryClipChangedListener(listener)
+        super.onCleared()
+    }
+
+
+    fun onEvent(event: QuestionDetailEvent) {
+        when (event) {
+            is QuestionDetailEvent.GenerateAiAnswer -> generateAiAnswer()
+            QuestionDetailEvent.UpdateAnswer -> {
+                val clipData = clipboardManager.primaryClip
+                val answerText =
+                    if (clipboardManager.primaryClipDescription?.hasMimeType(ClipDescription.MIMETYPE_TEXT_HTML) == true) {
+                        val item = clipData?.getItemAt(0)
+                        item?.htmlText ?: ""
+                    } else {
+                        val item = clipData?.getItemAt(0)
+                        item?.text?.toString() ?: ""
+                    }
+                updateAnswer(answerText)
+            }
+
+            QuestionDetailEvent.CopyQuestion -> {
+                clipboardManager.setPrimaryClip(
+                    ClipData.newPlainText(
+                        "copied_text",
+                        state.value.question?.question ?: ""
+                    )
+                )
+            }
+
+            is QuestionDetailEvent.TranslateText -> {
+                translatorManager.translate(state.value.copyText)
+                _copyText.update {
+                    ""
+                }
+            }
+        }
+    }
+
+
+    private fun generateAiAnswer() {
+        val currentQuestion = state.value.question ?: return
 
         viewModelScope.launch(Dispatchers.IO) {
             _isGenerating.value = true
@@ -101,8 +179,8 @@ class QuestionDetailViewModel @Inject constructor(
         }
     }
 
-    fun updateAnswer(newAnswer: String) {
-        val currentQuestion = question.value ?: return
+    private fun updateAnswer(newAnswer: String) {
+        val currentQuestion = state.value.question ?: return
         viewModelScope.launch(Dispatchers.IO) {
             val updatedEntity = QuestionEntity(
                 id = currentQuestion.id,

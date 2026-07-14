@@ -1,5 +1,6 @@
 package com.dutchman.resumeiq.di
 
+import android.content.ClipboardManager
 import android.content.Context
 import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
 import com.dutchman.resumeiq.domain.util.SharedPref
@@ -8,6 +9,8 @@ import androidx.room.Room
 import com.dutchman.resumeiq.data.local.AppDatabase
 import com.dutchman.resumeiq.data.local.dao.QuestionDao
 import com.dutchman.resumeiq.domain.speech.LiveSpeechRecognizer
+import com.dutchman.resumeiq.domain.util.GoogleTranslatorManager
+import com.dutchman.resumeiq.domain.util.TranslatorManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -64,4 +67,17 @@ object AppModule {
     ): QuestionDao {
         return db.questionDao
     }
+
+    @Provides
+    @Singleton
+    fun provideClipboardManager(
+        @ApplicationContext context: Context
+    ): ClipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+
+    @Provides
+    @Singleton
+    fun provideGoogleTranslatorManager(
+        @ApplicationContext context: Context
+    ): TranslatorManager = GoogleTranslatorManager(context)
+
 }
