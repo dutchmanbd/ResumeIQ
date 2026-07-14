@@ -5,4 +5,5 @@ sealed interface QuestionDetailEvent {
     data object UpdateAnswer : QuestionDetailEvent
     data object CopyQuestion : QuestionDetailEvent
     data object TranslateText : QuestionDetailEvent
+    data object OpenExternalApp : QuestionDetailEvent
 }

@@ -9,6 +9,7 @@ import androidx.room.Room
 import com.dutchman.resumeiq.data.local.AppDatabase
 import com.dutchman.resumeiq.data.local.dao.QuestionDao
 import com.dutchman.resumeiq.domain.speech.LiveSpeechRecognizer
+import com.dutchman.resumeiq.domain.util.ExternalAppManager
 import com.dutchman.resumeiq.domain.util.GoogleTranslatorManager
 import com.dutchman.resumeiq.domain.util.TranslatorManager
 import dagger.Module
@@ -79,5 +80,11 @@ object AppModule {
     fun provideGoogleTranslatorManager(
         @ApplicationContext context: Context
     ): TranslatorManager = GoogleTranslatorManager(context)
+
+    @Provides
+    @Singleton
+    fun provideExternalAppManager(
+        @ApplicationContext context: Context
+    ): ExternalAppManager = ExternalAppManager(context)
 
 }

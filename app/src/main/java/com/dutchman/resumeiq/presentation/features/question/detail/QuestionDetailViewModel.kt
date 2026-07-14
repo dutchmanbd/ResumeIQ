@@ -15,6 +15,7 @@ import com.dutchman.resumeiq.data.local.entity.QuestionEntity
 import com.dutchman.resumeiq.data.local.entity.toDomain
 import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
 import com.dutchman.resumeiq.domain.models.Question
+import com.dutchman.resumeiq.domain.util.ExternalAppManager
 import com.dutchman.resumeiq.domain.util.FileStorage
 import com.dutchman.resumeiq.domain.util.TranslatorManager
 import com.dutchman.resumeiq.domain.util.UserFactory
@@ -37,6 +38,7 @@ class QuestionDetailViewModel @Inject constructor(
     private val questionDao: QuestionDao,
     private val gemmaInferenceHelper: GemmaInferenceHelper,
     private val translatorManager: TranslatorManager,
+    private val externalAppManager: ExternalAppManager,
     private val clipboardManager: ClipboardManager,
     private val fileStorage: FileStorage,
     private val userFactory: UserFactory
@@ -125,6 +127,11 @@ class QuestionDetailViewModel @Inject constructor(
                 _copyText.update {
                     ""
                 }
+            }
+            
+            is QuestionDetailEvent.OpenExternalApp -> {
+                val qText = state.value.question?.question ?: ""
+                externalAppManager.openApp(state.value.externalApp, qText)
             }
         }
     }

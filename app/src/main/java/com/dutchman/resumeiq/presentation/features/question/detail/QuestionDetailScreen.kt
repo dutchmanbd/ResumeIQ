@@ -59,51 +59,11 @@ fun QuestionDetailScreen(
     var showPasteDialog by remember { mutableStateOf(false) }
 
     val externalApp = state.externalApp
-    val externalAppPackage =
-        if (externalApp == "Gemini") "com.google.android.apps.bard" else "com.openai.chatgpt"
     val externalAppIcon =
         if (externalApp == "Gemini") R.drawable.ic_gemini else R.drawable.ic_chatgpt
 
     val openExternalApp = {
-        val qText = question?.question ?: ""
-        try {
-            val processIntent = Intent(Intent.ACTION_PROCESS_TEXT).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_PROCESS_TEXT, qText)
-                putExtra(Intent.EXTRA_PROCESS_TEXT_READONLY, true)
-                setPackage(externalAppPackage)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(processIntent)
-        } catch (e: Exception) {
-            try {
-                val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, qText)
-                    setPackage(externalAppPackage)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(sendIntent)
-            } catch (e2: Exception) {
-                try {
-                    context.startActivity(
-                        Intent(
-                            Intent.ACTION_VIEW,
-                            android.net.Uri.parse("market://details?id=$externalAppPackage")
-                        ).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        })
-                } catch (e3: Exception) {
-                    context.startActivity(
-                        Intent(
-                            Intent.ACTION_VIEW,
-                            android.net.Uri.parse("https://play.google.com/store/apps/details?id=$externalAppPackage")
-                        ).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        })
-                }
-            }
-        }
+        viewModel.onEvent(QuestionDetailEvent.OpenExternalApp)
     }
 
     if (showPasteDialog) {
