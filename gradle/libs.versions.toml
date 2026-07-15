@@ -1,6 +1,6 @@
 [versions]
 android-gradle = "9.2.1"
-android-kotlin = "2.3.21"
+android-kotlin = "2.4.10"
 androidx-activity-compose = "1.13.0"
 androidx-appcompat = "1.7.1"
 androidx-core-ktx = "1.18.0"
@@ -23,9 +23,9 @@ compose-google-fonts = "1.11.2"
 coil = "2.7.0"
 compose-markdown = "0.5.4"
 
-ksp = "2.3.6"
+ksp = "2.3.10"
 
-hilt-android = "2.59.2"
+hilt-android = "2.60.1"
 accompanist-permissions = "0.37.3"
 
 generative-ai = "0.9.0"
@@ -50,7 +50,7 @@ googleid = "1.2.0"
 room = "2.8.4"
 
 camerax = "1.6.1"
-opencv = "4.13.0"
+play-services-mlkit-document-scanner = "16.0.0"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
@@ -64,7 +64,7 @@ androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", versi
 androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
 androidx-material = { module = "androidx.compose.material:material" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
-opencv = { module = "org.opencv:opencv", version.ref = "opencv" }
+play-services-mlkit-document-scanner = { module = "com.google.android.gms:play-services-mlkit-document-scanner", version.ref = "play-services-mlkit-document-scanner" }
 androidx-lifecycle-livedata-ktx = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidx-lifecycle" }

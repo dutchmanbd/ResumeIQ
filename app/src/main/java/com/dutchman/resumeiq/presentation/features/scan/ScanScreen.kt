@@ -3,6 +3,8 @@ package com.dutchman.resumeiq.presentation.features.scan
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
 import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -61,6 +63,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.alpha
+import android.app.Activity
+import androidx.activity.result.IntentSenderRequest
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -72,7 +77,6 @@ import com.dutchman.resumeiq.presentation.features.scan.preview.QuestionPreviewS
 import com.ramcosta.composedestinations.generated.destinations.AIGenerationQuestionScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.QuestionPreviewScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.QuickQuestionScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.ScannerScreenDestination
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,13 +101,18 @@ fun ScanScreen(
 
     val coroutineScope = rememberCoroutineScope()
 
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            navigator.navigate(ScannerScreenDestination)
-        } else {
-            android.widget.Toast.makeText(context, "Camera permission is required to scan resumes", android.widget.Toast.LENGTH_SHORT).show()
+    val scannerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val scanResult = GmsDocumentScanningResult.fromActivityResultIntent(result.data)
+            scanResult?.pdf?.uri?.let { uri ->
+                viewModel.onEvent(ScanEvent.OnFileSelected(uri, context))
+            } ?: run {
+                scanResult?.pages?.firstOrNull()?.imageUri?.let { uri ->
+                    viewModel.onEvent(ScanEvent.OnFileSelected(uri, context))
+                }
+            }
         }
     }
 
@@ -262,10 +271,14 @@ fun ScanScreen(
                     modifier = Modifier.weight(1f),
                     onClick = {
                         if (uiState.isModelDownloaded) {
-                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                                navigator.navigate(ScannerScreenDestination)
-                            } else {
-                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            context.findActivity()?.let { activity ->
+                                viewModel.documentScanner.getStartScanIntent(activity)
+                                    .addOnSuccessListener { intentSender ->
+                                        scannerLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
+                                    }
+                                    .addOnFailureListener { e ->
+                                        android.widget.Toast.makeText(context, "Failed to launch scanner: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
                             }
                         } else {
                             android.widget.Toast.makeText(context, "Please download model first", android.widget.Toast.LENGTH_SHORT).show()
@@ -648,6 +661,15 @@ fun OptionCard(
             )
         }
     }
+}
+
+fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
 }
 
 @OptIn(ExperimentalFoundationApi::class)

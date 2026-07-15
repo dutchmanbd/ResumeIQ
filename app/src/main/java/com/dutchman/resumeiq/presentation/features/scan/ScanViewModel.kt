@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanner
 
 import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
 import com.dutchman.resumeiq.domain.models.Interviewer
@@ -38,7 +39,8 @@ class ScanViewModel @Inject constructor(
     private val fileStorage: FileStorage,
     private val questionDao: QuestionDao,
     private val userFactory: UserFactory,
-    private val liveSpeechRecognizer: LiveSpeechRecognizer
+    private val liveSpeechRecognizer: LiveSpeechRecognizer,
+    val documentScanner: GmsDocumentScanner
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ScanUiState())

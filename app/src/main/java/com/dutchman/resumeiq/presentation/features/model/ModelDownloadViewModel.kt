@@ -58,7 +58,7 @@ class ModelDownloadViewModel @Inject constructor(
     private fun checkStorage() {
         val stat = android.os.StatFs(android.os.Environment.getDataDirectory().path)
         val availableBytes = stat.availableBlocksLong * stat.blockSizeLong
-        val requiredBytes = 2.5 * 1024 * 1024 * 1024 // 2.5 GB
+        val requiredBytes = 4.2 * 1024 * 1024 * 1024 // 4.2 GB
         _downloadState.update { it.copy(hasEnoughStorage = availableBytes > requiredBytes) }
     }
 

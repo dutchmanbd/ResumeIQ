@@ -193,11 +193,15 @@ class ModelDownloadWorker @AssistedInject constructor(
                                 val timeDiff = (currentTime - lastTime) / 1000.0 // seconds
                                 
                                 val progress = if (totalBytes > 0) ((bytesDownloaded * 100) / totalBytes).toInt() else 0
+                                val bytesDiff = bytesDownloaded - lastBytes
                                 
-                                if (timeDiff >= 1.0 || (progress != lastProgress && lastProgress == -1)) {
-                                    val bytesDiff = bytesDownloaded - lastBytes
-                                    val speed = if (timeDiff > 0) (bytesDiff / (1024.0 * 1024.0)) / timeDiff else 0.0
-                                    val speedFormatted = String.format(java.util.Locale.US, "%.2f", speed)
+                                if (bytesDiff > 0 || lastProgress == -1 || timeDiff >= 3.0) {
+                                    val speed = if (timeDiff > 0 && bytesDiff > 0) {
+                                        (bytesDiff / (1024.0 * 1024.0)) / timeDiff
+                                    } else {
+                                        0.0
+                                    }
+                                    val speedFormatted = String.format(java.util.Locale.US, "%.1f", speed)
 
                                     setProgress(workDataOf(
                                         KEY_PROGRESS to progress,
@@ -209,7 +213,9 @@ class ModelDownloadWorker @AssistedInject constructor(
                                     setForeground(createForegroundInfo(progress, speedFormatted))
                                     
                                     lastProgress = progress
-                                    lastBytes = bytesDownloaded
+                                    if (bytesDiff > 0 || lastProgress == -1) {
+                                        lastBytes = bytesDownloaded
+                                    }
                                     lastTime = currentTime
                                 }
                                 null // Continue loop

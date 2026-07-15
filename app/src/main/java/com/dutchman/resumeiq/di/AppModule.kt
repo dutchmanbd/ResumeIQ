@@ -12,6 +12,9 @@ import com.dutchman.resumeiq.domain.speech.LiveSpeechRecognizer
 import com.dutchman.resumeiq.domain.util.ExternalAppManager
 import com.dutchman.resumeiq.domain.util.GoogleTranslatorManager
 import com.dutchman.resumeiq.domain.util.TranslatorManager
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanner
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -86,5 +89,17 @@ object AppModule {
     fun provideExternalAppManager(
         @ApplicationContext context: Context
     ): ExternalAppManager = ExternalAppManager(context)
+
+    @Provides
+    @Singleton
+    fun provideDocumentScanner(): GmsDocumentScanner {
+        val options = GmsDocumentScannerOptions.Builder()
+            .setGalleryImportAllowed(true)
+            .setPageLimit(10)
+            .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG, GmsDocumentScannerOptions.RESULT_FORMAT_PDF)
+            .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+            .build()
+        return GmsDocumentScanning.getClient(options)
+    }
 
 }

@@ -35,15 +35,16 @@ android {
 
     defaultConfig {
         applicationId = "com.dutchman.resumeiq"
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 5
+        versionName = "1.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -105,7 +106,7 @@ dependencies {
 
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.mediapipe.tasks.genai)
-    implementation(libs.litert.lm)
+//    implementation(libs.litert.lm)
     implementation(libs.mediapipe.tasks.vision)
     implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.coil.compose)
@@ -115,7 +116,7 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
-    implementation(libs.opencv)
+    implementation(libs.play.services.mlkit.document.scanner)
 
     implementation(libs.gson)
 
