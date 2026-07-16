@@ -1,6 +1,5 @@
 package com.dutchman.resumeiq.data.worker
 
-import android.app.DownloadManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -9,21 +8,28 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.core.content.edit
-import androidx.core.net.toUri
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
+import com.google.api.client.googleapis.media.MediaHttpDownloader
+import com.google.api.client.googleapis.media.MediaHttpDownloaderProgressListener
+import com.google.api.client.http.javanet.NetHttpTransport
+import com.google.api.client.json.gson.GsonFactory
+import com.google.api.services.drive.Drive
+import com.google.api.services.drive.DriveScopes
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import androidx.hilt.work.HiltWorker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import com.dutchman.resumeiq.domain.util.UserFactory
 import com.dutchman.resumeiq.domain.util.FileStorage
+import java.io.InputStream
+import java.util.Locale
 
 @HiltWorker
 class ModelDownloadWorker @AssistedInject constructor(
@@ -34,7 +40,7 @@ class ModelDownloadWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, workerParams) {
 
     companion object {
-        const val KEY_URL = "KEY_URL"
+        const val KEY_URL = "KEY_URL" // Used for File ID now
         const val KEY_PROGRESS = "KEY_PROGRESS"
         const val KEY_TOTAL_BYTES = "KEY_TOTAL_BYTES"
         const val KEY_DOWNLOADED_BYTES = "KEY_DOWNLOADED_BYTES"
@@ -43,6 +49,9 @@ class ModelDownloadWorker @AssistedInject constructor(
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "model_download_channel"
     }
+
+    private var lastTime = System.currentTimeMillis()
+    private var lastBytes = 0L
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
         return createForegroundInfo(0, "0.0")
@@ -87,7 +96,8 @@ class ModelDownloadWorker @AssistedInject constructor(
     }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val modelUrl = inputData.getString(KEY_URL) ?: return@withContext Result.failure()
+        val fileId = inputData.getString(KEY_URL) ?: return@withContext Result.failure(workDataOf("ERROR" to "Missing File ID"))
+        val userEmail = "interviewbd26@gmail.com" // From user snippet
 
         setForeground(createForegroundInfo(0, "0.0"))
 
@@ -96,140 +106,84 @@ class ModelDownloadWorker @AssistedInject constructor(
             return@withContext Result.success()
         }
 
-        val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        
-        var downloadId = userFactory.getDownloadId(FileStorage.FILE_NAME)
+        try {
+            // Initialize authenticated Google Drive service inside background worker
+            val credential = GoogleAccountCredential.usingOAuth2(
+                applicationContext, listOf(DriveScopes.DRIVE_FILE, DriveScopes.DRIVE)
+            ).setSelectedAccountName(userEmail)
 
-        // Check if download is already in progress or finished
-        if (downloadId != -1L) {
-            val query = DownloadManager.Query().setFilterById(downloadId)
-            downloadManager.query(query).use { cursor ->
-                if (cursor != null && cursor.moveToFirst()) {
-                    val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                    if (statusIdx != -1) {
-                        val status = cursor.getInt(statusIdx)
-                        if (status == DownloadManager.STATUS_FAILED) {
-                            downloadId = -1L
-                        } else if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                            if (fileStorage.getDownloadedFile() != null) {
-                                return@withContext Result.success()
-                            }
-                            // Let the while loop copy the file if it hasn't been copied yet
-                        }
-                    } else {
-                        downloadId = -1L
+            val driveService = Drive.Builder(
+                NetHttpTransport(),
+                GsonFactory.getDefaultInstance(),
+                credential
+            ).setApplicationName("ResumeIQ").build()
+
+            val fileMeta = driveService.files().get(fileId).setFields("size").execute()
+            val totalBytes = fileMeta.getSize() ?: 0L
+            
+            val request = driveService.files().get(fileId)
+            val response = request.executeMedia()
+            
+            val inputStream: InputStream = response.content
+
+            val targetFile = File(applicationContext.getExternalFilesDir(null), FileStorage.FILE_NAME)
+            
+            FileOutputStream(targetFile).use { outputStream ->
+                val data = ByteArray(4096)
+                var total: Long = 0
+                var count: Int
+                
+                lastTime = System.currentTimeMillis()
+                lastBytes = 0L
+
+                while (inputStream.read(data).also { count = it } != -1) {
+                    if (isStopped) {
+                        inputStream.close()
+                        return@withContext Result.retry()
                     }
-                } else {
-                    downloadId = -1L
+                    total += count
+                    outputStream.write(data, 0, count)
+
+                    val currentTime = System.currentTimeMillis()
+                    val timeDiff = (currentTime - lastTime) / 1000.0 // seconds
+
+                    if (timeDiff >= 1.0 || total == totalBytes) { // Update progress every second
+                        val bytesDiff = total - lastBytes
+                        val speed = if (timeDiff > 0 && bytesDiff > 0) {
+                            (bytesDiff / (1024.0 * 1024.0)) / timeDiff
+                        } else {
+                            0.0
+                        }
+                        val speedFormatted = String.format(Locale.US, "%.1f", speed)
+                        val progress = if (totalBytes > 0) ((total * 100) / totalBytes).toInt() else 0
+
+                        setProgress(workDataOf(
+                            KEY_PROGRESS to progress,
+                            KEY_DOWNLOADED_BYTES to total,
+                            KEY_TOTAL_BYTES to totalBytes,
+                            KEY_SPEED to speedFormatted
+                        ))
+
+                        setForeground(createForegroundInfo(progress, speedFormatted))
+                        
+                        lastTime = currentTime
+                        lastBytes = total
+                    }
                 }
             }
-        }
 
-        if (downloadId == -1L) {
-            val request = DownloadManager.Request(modelUrl.toUri())
-                .setTitle("Downloading AI Model")
-                .setDescription("Preparing offline interview assistant")
-                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN)
-                .setDestinationInExternalFilesDir(context, null, FileStorage.FILE_NAME)
-                .setAllowedOverMetered(true)
-                .setAllowedOverRoaming(true)
-
-            downloadId = downloadManager.enqueue(request)
-            userFactory.saveDownloadId(FileStorage.FILE_NAME, downloadId)
-        }
-
-        var lastProgress = -1
-        var lastBytes = 0L
-        var lastTime = System.currentTimeMillis()
-
-        while (true) {
-            if (isStopped) return@withContext Result.retry()
-
-            val query = DownloadManager.Query().setFilterById(downloadId)
-            val result = downloadManager.query(query).use { cursor ->
-                if (cursor != null && cursor.moveToFirst()) {
-                    val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                    val bytesIdx = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
-                    val totalIdx = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
-
-                    if (statusIdx != -1 && bytesIdx != -1 && totalIdx != -1) {
-                        val status = cursor.getInt(statusIdx)
-                        val bytesDownloaded = cursor.getLong(bytesIdx)
-                        val totalBytes = cursor.getLong(totalIdx)
-
-                        when (status) {
-                            DownloadManager.STATUS_SUCCESSFUL -> {
-                                try {
-                                    val uri = downloadManager.getUriForDownloadedFile(downloadId)
-                                    if (uri != null) {
-                                            context.contentResolver.openInputStream(uri)?.use { input ->
-                                                fileStorage.saveFile(input)
-                                            }
-                                            downloadManager.remove(downloadId) // This removes the entry and the downloaded file
-                                        } else {
-                                            // Fallback if uri is null for some reason
-                                            val externalFile = File(context.getExternalFilesDir(null), FileStorage.FILE_NAME)
-                                            if (externalFile.exists()) {
-                                                externalFile.inputStream().use { input ->
-                                                    fileStorage.saveFile(input)
-                                                }
-                                                externalFile.delete()
-                                            }
-                                        }
-                                        userFactory.removeDownloadId(FileStorage.FILE_NAME)
-                                        Result.success()
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                    Result.failure()
-                                }
-                            }
-                            DownloadManager.STATUS_FAILED -> {
-                                Log.e("ModelDownload", "doWork: ")
-                                userFactory.removeDownloadId(FileStorage.FILE_NAME)
-                                Result.failure()
-                            }
-                            else -> {
-                                val currentTime = System.currentTimeMillis()
-                                val timeDiff = (currentTime - lastTime) / 1000.0 // seconds
-                                
-                                val progress = if (totalBytes > 0) ((bytesDownloaded * 100) / totalBytes).toInt() else 0
-                                val bytesDiff = bytesDownloaded - lastBytes
-                                
-                                if (bytesDiff > 0 || lastProgress == -1 || timeDiff >= 3.0) {
-                                    val speed = if (timeDiff > 0 && bytesDiff > 0) {
-                                        (bytesDiff / (1024.0 * 1024.0)) / timeDiff
-                                    } else {
-                                        0.0
-                                    }
-                                    val speedFormatted = String.format(java.util.Locale.US, "%.1f", speed)
-
-                                    setProgress(workDataOf(
-                                        KEY_PROGRESS to progress,
-                                        KEY_DOWNLOADED_BYTES to bytesDownloaded,
-                                        KEY_TOTAL_BYTES to totalBytes,
-                                        KEY_SPEED to speedFormatted
-                                    ))
-                                    
-                                    setForeground(createForegroundInfo(progress, speedFormatted))
-                                    
-                                    lastProgress = progress
-                                    if (bytesDiff > 0 || lastProgress == -1) {
-                                        lastBytes = bytesDownloaded
-                                    }
-                                    lastTime = currentTime
-                                }
-                                null // Continue loop
-                            }
-                        }
-                    } else null
-                } else null
+            // Copy to internal storage via FileStorage once download is complete on external storage
+            targetFile.inputStream().use { input ->
+                fileStorage.saveFile(input)
             }
+            targetFile.delete() // Clean up external file
 
-            if (result != null) return@withContext result
+            Result.success()
 
-            delay(1000)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Log.e("ResumeIQ_Worker", "doWork error: ${e.message}", e)
+            Result.failure(workDataOf(KEY_URL to e.toString(), KEY_PROGRESS to -1))
         }
-        @Suppress("UNREACHABLE_CODE")
-        Result.failure()
     }
 }

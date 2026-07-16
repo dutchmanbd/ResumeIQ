@@ -62,6 +62,12 @@ android {
         buildConfig = true
     }
 
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1,DEPENDENCIES}"
+        }
+    }
+
     configurations.all {
         resolutionStrategy {
             force("androidx.concurrent:concurrent-futures:1.2.0")
@@ -85,6 +91,16 @@ dependencies {
 
     implementation(libs.bundles.androidx.hilt)
     implementation(libs.hilt.android)
+
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("androidx.hilt:hilt-work:1.2.0")
+    ksp("androidx.hilt:hilt-compiler:1.2.0")
+
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    
+    // Google Drive API
+    implementation("com.google.api-client:google-api-client-android:1.33.0")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20220815-2.0.0")
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
@@ -128,6 +144,10 @@ dependencies {
     implementation(libs.credentials)
     implementation(libs.credentials.auth)
     implementation(libs.googleid)
+
+    // Networking
+    implementation(platform(libs.okhttp.bom))
+    implementation(libs.bundles.okhttp)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.junit.android)

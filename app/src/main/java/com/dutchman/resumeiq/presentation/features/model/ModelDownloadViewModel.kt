@@ -26,6 +26,7 @@ import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
 
 data class DownloadState(
     val progress: Int = 0,
+    val requiredGB: Double = 2.93,
     val currentBytes: Long = 0,
     val totalBytes: Long = 0,
     val speedMbPerSec: String = "0.0",
@@ -58,7 +59,7 @@ class ModelDownloadViewModel @Inject constructor(
     private fun checkStorage() {
         val stat = android.os.StatFs(android.os.Environment.getDataDirectory().path)
         val availableBytes = stat.availableBlocksLong * stat.blockSizeLong
-        val requiredBytes = 4.2 * 1024 * 1024 * 1024 // 4.2 GB
+        val requiredBytes = downloadState.value.requiredGB * 1024 * 1024 * 1024 // 4.2 GB
         _downloadState.update { it.copy(hasEnoughStorage = availableBytes > requiredBytes) }
     }
 
@@ -95,10 +96,10 @@ class ModelDownloadViewModel @Inject constructor(
             .setInputData(inputData)
             .build()
 
-        // Enqueue unique work to avoid multiple downloads
+        // Enqueue unique work to avoid multiple downloads, replacing any stuck or previous failed jobs
         workManager.enqueueUniqueWork(
             "ModelDownloadWork",
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.REPLACE,
             downloadRequest
         )
 
@@ -113,7 +114,7 @@ class ModelDownloadViewModel @Inject constructor(
                     val speed = workInfo.progress.getString(ModelDownloadWorker.KEY_SPEED) ?: "0.0"
 
                     when (workInfo.state) {
-                        WorkInfo.State.RUNNING -> {
+                        WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING -> {
                             val speedValue = speed.toDoubleOrNull() ?: 0.0
                             val timeRemaining = if (totalBytes > 0 && speedValue > 0.1) {
                                 val remainingBytes = totalBytes - currentBytes
@@ -163,11 +164,13 @@ class ModelDownloadViewModel @Inject constructor(
                             )
                         }
                         else -> {
-                            // Other states like ENQUEUED, CANCELLED, BLOCKED
+                            // Other states like CANCELLED, BLOCKED
                         }
                     }
                 }
             }
         }
     }
+
+
 }

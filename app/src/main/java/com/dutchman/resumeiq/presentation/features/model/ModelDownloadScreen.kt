@@ -322,7 +322,7 @@ fun ModelDownloadScreenRoot(
                 if (state.status == DownloadStatus.IDLE) {
                     if (!state.hasEnoughStorage) {
                         Text(
-                            text = "Insufficient storage. 2.5 GB required.",
+                            text = "Insufficient storage. ${state.requiredGB} GB required.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(bottom = 8.dp)
@@ -341,7 +341,7 @@ fun ModelDownloadScreenRoot(
                         )
                     ) {
                         Text(
-                            text = "Download Model (~2.5 GB)",
+                            text = "Download Model (~${state.requiredGB} GB)",
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
