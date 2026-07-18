@@ -68,7 +68,7 @@ class ModelDownloadWorker @AssistedInject constructor(
         }
 
         val intent = Intent(context, com.dutchman.resumeiq.presentation.activities.MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         val pendingIntent = PendingIntent.getActivity(
             context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -109,7 +109,14 @@ class ModelDownloadWorker @AssistedInject constructor(
                 return@withContext Result.failure(workDataOf("ERROR" to "Server returned HTTP ${connection.responseCode} ${connection.responseMessage}"))
             }
 
-            val totalBytes = connection.contentLength.toLong()
+            var totalBytes = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                connection.contentLengthLong
+            } else {
+                connection.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
+            }
+            if (totalBytes <= 0) {
+                totalBytes = connection.getHeaderField("x-linked-size")?.toLongOrNull() ?: -1L
+            }
             val inputStream: InputStream = connection.inputStream
 
             val targetFile = File(applicationContext.getExternalFilesDir(null), FileStorage.FILE_NAME)

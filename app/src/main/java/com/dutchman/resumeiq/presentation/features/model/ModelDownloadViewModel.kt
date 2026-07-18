@@ -54,6 +54,7 @@ class ModelDownloadViewModel @Inject constructor(
 
     init {
         checkStorage()
+        observeDownloadWork()
     }
 
     private fun checkStorage() {
@@ -94,6 +95,7 @@ class ModelDownloadViewModel @Inject constructor(
         val downloadRequest = OneTimeWorkRequestBuilder<ModelDownloadWorker>()
             .setConstraints(constraints)
             .setInputData(inputData)
+            .setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
 
         // Enqueue unique work to avoid multiple downloads, replacing any stuck or previous failed jobs
@@ -102,8 +104,9 @@ class ModelDownloadViewModel @Inject constructor(
             ExistingWorkPolicy.REPLACE,
             downloadRequest
         )
+    }
 
-        // Observe the work progress
+    private fun observeDownloadWork() {
         viewModelScope.launch {
             workManager.getWorkInfosForUniqueWorkLiveData("ModelDownloadWork").observeForever { workInfos ->
                 val workInfo = workInfos?.firstOrNull { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED } ?: workInfos?.firstOrNull()
