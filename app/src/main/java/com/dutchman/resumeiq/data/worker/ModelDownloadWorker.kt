@@ -12,13 +12,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
-import com.google.api.client.googleapis.media.MediaHttpDownloader
-import com.google.api.client.googleapis.media.MediaHttpDownloaderProgressListener
-import com.google.api.client.http.javanet.NetHttpTransport
-import com.google.api.client.json.gson.GsonFactory
-import com.google.api.services.drive.Drive
-import com.google.api.services.drive.DriveScopes
+import java.net.HttpURLConnection
+import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -40,7 +35,7 @@ class ModelDownloadWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, workerParams) {
 
     companion object {
-        const val KEY_URL = "KEY_URL" // Used for File ID now
+        const val KEY_URL = "KEY_URL"
         const val KEY_PROGRESS = "KEY_PROGRESS"
         const val KEY_TOTAL_BYTES = "KEY_TOTAL_BYTES"
         const val KEY_DOWNLOADED_BYTES = "KEY_DOWNLOADED_BYTES"
@@ -96,8 +91,7 @@ class ModelDownloadWorker @AssistedInject constructor(
     }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val fileId = inputData.getString(KEY_URL) ?: return@withContext Result.failure(workDataOf("ERROR" to "Missing File ID"))
-        val userEmail = "interviewbd26@gmail.com" // From user snippet
+        val fileUrl = inputData.getString(KEY_URL) ?: return@withContext Result.failure(workDataOf("ERROR" to "Missing URL"))
 
         setForeground(createForegroundInfo(0, "0.0"))
 
@@ -107,24 +101,16 @@ class ModelDownloadWorker @AssistedInject constructor(
         }
 
         try {
-            // Initialize authenticated Google Drive service inside background worker
-            val credential = GoogleAccountCredential.usingOAuth2(
-                applicationContext, listOf(DriveScopes.DRIVE_FILE, DriveScopes.DRIVE)
-            ).setSelectedAccountName(userEmail)
+            val url = URL(fileUrl)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.connect()
 
-            val driveService = Drive.Builder(
-                NetHttpTransport(),
-                GsonFactory.getDefaultInstance(),
-                credential
-            ).setApplicationName("ResumeIQ").build()
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                return@withContext Result.failure(workDataOf("ERROR" to "Server returned HTTP ${connection.responseCode} ${connection.responseMessage}"))
+            }
 
-            val fileMeta = driveService.files().get(fileId).setFields("size").execute()
-            val totalBytes = fileMeta.getSize() ?: 0L
-            
-            val request = driveService.files().get(fileId)
-            val response = request.executeMedia()
-            
-            val inputStream: InputStream = response.content
+            val totalBytes = connection.contentLength.toLong()
+            val inputStream: InputStream = connection.inputStream
 
             val targetFile = File(applicationContext.getExternalFilesDir(null), FileStorage.FILE_NAME)
             
