@@ -90,3 +90,9 @@
 -dontwarn com.google.mediapipe.proto.GraphTemplateProto$CalculatorGraphTemplate
 -dontwarn java.lang.management.ManagementFactory
 -dontwarn java.lang.management.RuntimeMXBean
+-dontwarn org.apache.log.Hierarchy
+-dontwarn org.apache.log.Logger
+-dontwarn org.apache.log4j.Level
+-dontwarn org.apache.log4j.Logger
+-dontwarn org.apache.log4j.Priority
+-dontwarn org.ietf.jgss.GSSCredential
