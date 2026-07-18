@@ -24,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -162,7 +163,7 @@ class QuestionDetailViewModel @Inject constructor(
                     3. Output ONLY the raw response text. Do not wrap the output in markdown code blocks.
                 """.trimIndent()
 
-                gemmaInferenceHelper.generateResponse(prompt).collect { partialResult ->
+                gemmaInferenceHelper.generateResponseStreaming(prompt).collect { partialResult ->
                     _generatedAnswer.value += partialResult
                 }
 

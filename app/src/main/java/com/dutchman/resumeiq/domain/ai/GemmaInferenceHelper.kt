@@ -54,20 +54,14 @@ class GemmaInferenceHelper(
     suspend fun generateResponse(
         prompt: String,
         images: List<Bitmap> = emptyList()
-    ): Flow<String> = callbackFlow {
+    ): String = withContext(Dispatchers.IO) {
         val inference = llmInference
         if (inference == null) {
-            close(IllegalStateException("Model not initialized"))
-            return@callbackFlow
+            throw IllegalStateException("Model not initialized")
         }
 
         if (images.isNotEmpty() && !supportsVision) {
-            close(
-                IllegalStateException(
-                    "This model does not support image input. Re-initialize with supportsVision=true and a vision-capable .task model."
-                )
-            )
-            return@callbackFlow
+            throw IllegalStateException("This model does not support image input. Re-initialize with supportsVision=true and a vision-capable .task model.")
         }
 
         val currentSession = try {
@@ -82,6 +76,63 @@ class GemmaInferenceHelper(
             LlmInferenceSession.createFromOptions(inference, sessionBuilder.build())
         } catch (e: Exception) {
             e.printStackTrace()
+            throw e
+        }
+
+        session = currentSession
+
+        try {
+            for (bitmap in images) {
+                val mpImage: MPImage = BitmapImageBuilder(bitmap).build()
+                currentSession.addImage(mpImage)
+            }
+
+            currentSession.addQueryChunk(prompt)
+            
+            val builder = StringBuilder()
+            val future = currentSession.generateResponseAsync { partialResult, done ->
+                builder.append(partialResult)
+            }
+
+            future.await()
+            builder.toString()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw e
+        } finally {
+            if (session === currentSession) {
+                session = null
+            }
+            disposeInferenceSession(currentSession)
+        }
+    }
+
+    fun generateResponseStreaming(
+        prompt: String,
+        images: List<Bitmap> = emptyList()
+    ): Flow<String> = callbackFlow {
+        val inference = llmInference
+        if (inference == null) {
+            close(IllegalStateException("Model not initialized"))
+            return@callbackFlow
+        }
+
+        if (images.isNotEmpty() && !supportsVision) {
+            close(IllegalStateException("This model does not support image input. Re-initialize with supportsVision=true and a vision-capable .task model."))
+            return@callbackFlow
+        }
+
+        val currentSession = try {
+            val sessionBuilder = LlmInferenceSession.LlmInferenceSessionOptions.builder()
+            if (supportsVision) {
+                sessionBuilder.setGraphOptions(
+                    GraphOptions.builder()
+                        .setEnableVisionModality(true)
+                        .build()
+                )
+            }
+            LlmInferenceSession.createFromOptions(inference, sessionBuilder.build())
+        } catch (e: Exception) {
             close(e)
             return@callbackFlow
         }
@@ -96,23 +147,17 @@ class GemmaInferenceHelper(
 
             currentSession.addQueryChunk(prompt)
 
-            val future = currentSession.generateResponseAsync { partialResult, done ->
-                if (!isClosedForSend) {
-                    trySend(partialResult)
-                }
+            currentSession.generateResponseAsync { partialResult, done ->
+                trySend(partialResult)
                 if (done) {
                     close()
                 }
             }
-
-            future.await()
-            if (!isClosedForSend) {
-                close()
-            }
         } catch (e: Exception) {
-            e.printStackTrace()
             close(e)
-        } finally {
+        }
+
+        awaitClose {
             if (session === currentSession) {
                 session = null
             }

@@ -298,11 +298,10 @@ class ScanViewModel @Inject constructor(
                    
                 """.trimIndent()
 
-                gemmaInferenceHelper.generateResponse(
+                val fullResult = gemmaInferenceHelper.generateResponse(
                     prompt = message,
-                ).collect { result ->
-                    _uiState.update { it.copy(generatedQuestions = it.generatedQuestions + result) }
-                }
+                )
+                _uiState.update { it.copy(generatedQuestions = fullResult) }
 
                 _uiState.update { it.copy(isGenerating = false) }
                 val jsonString = _uiState.value.generatedQuestions;
@@ -387,12 +386,11 @@ class ScanViewModel @Inject constructor(
                     Ensure minimum $MINIMUM_QUESTIONS questions are output in the "questions" array and maximum possible questions.
                 """.trimIndent()
 
-                gemmaInferenceHelper.generateResponse(
+                val fullResult = gemmaInferenceHelper.generateResponse(
                     prompt = message,
                     images = images
-                ).collect { result ->
-                    _uiState.update { it.copy(generatedQuestions = it.generatedQuestions + result) }
-                }
+                )
+                _uiState.update { it.copy(generatedQuestions = fullResult) }
 
                 _uiState.update { it.copy(isGenerating = false) }
                 val jsonString = _uiState.value.generatedQuestions;
