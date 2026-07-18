@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.DocumentScanner
 import androidx.compose.material.icons.outlined.Person
@@ -78,6 +79,7 @@ import com.ramcosta.composedestinations.generated.destinations.AIGenerationQuest
 import com.ramcosta.composedestinations.generated.destinations.QuestionPreviewScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.QuickQuestionScreenDestination
 import kotlinx.coroutines.flow.collectLatest
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
@@ -133,6 +135,19 @@ fun ScanScreen(
                     }
                 }
             }
+        }
+    }
+
+    var elapsedTime by remember { mutableStateOf(0) }
+    LaunchedEffect(uiState.isGenerating) {
+        if (uiState.isGenerating) {
+            elapsedTime = 0
+            while (uiState.isGenerating) {
+                kotlinx.coroutines.delay(1000L)
+                elapsedTime++
+            }
+        } else {
+            elapsedTime = 0
         }
     }
 
@@ -516,23 +531,35 @@ fun ScanScreen(
 
                 Button(
                     onClick = {
-                        val selectedBitmaps = uiState.previewImages.filterIndexed { index, _ ->
-                            uiState.selectedPages.contains(index)
+                        if (uiState.isGenerating) {
+                            viewModel.onEvent(ScanEvent.OnCancelGenerationClicked)
+                        } else {
+                            val selectedBitmaps = uiState.previewImages.filterIndexed { index, _ ->
+                                uiState.selectedPages.contains(index)
+                            }
+                            viewModel.onEvent(ScanEvent.OnGenerateQuestionsClicked(selectedBitmaps))
                         }
-                        viewModel.onEvent(ScanEvent.OnGenerateQuestionsClicked(selectedBitmaps))
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    enabled = !uiState.isGenerating
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (uiState.isGenerating) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    ),
+                    enabled = true
                 ) {
                     if (uiState.isGenerating) {
                         CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.onPrimary,
+                            color = MaterialTheme.colorScheme.onError,
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
                         )
                     } else {
                         Icon(
@@ -543,7 +570,7 @@ fun ScanScreen(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        if (uiState.isGenerating) "Generating..." else "Generate Questions",
+                        if (uiState.isGenerating) "Stop Generating" else "Generate Questions",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -575,12 +602,15 @@ fun ScanScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Text(
-                    "Estimated analysis time: 15 seconds",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
+                if (uiState.isGenerating) {
+                    Text(
+                        "Generating time: ${String.format(Locale.ENGLISH, "%02d:%02d", elapsedTime / 60, elapsedTime % 60)}",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(32.dp))
             }

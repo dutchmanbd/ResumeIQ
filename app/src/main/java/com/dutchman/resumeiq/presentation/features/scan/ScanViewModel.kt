@@ -51,6 +51,7 @@ class ScanViewModel @Inject constructor(
         get() = _event.asSharedFlow()
         
     private var speechJob: Job? = null
+    private var generateJob: Job? = null
 
     init {
         _uiState.update { it.copy(isModelDownloaded = userFactory.isModelDownloaded) }
@@ -123,6 +124,10 @@ class ScanViewModel @Inject constructor(
                         generatedQuestions = ""
                     ) 
                 }
+            }
+            is ScanEvent.OnCancelGenerationClicked -> {
+                generateJob?.cancel()
+                _uiState.update { it.copy(isGenerating = false) }
             }
         }
     }
@@ -232,7 +237,8 @@ class ScanViewModel @Inject constructor(
 
 
     private fun generateQuestions() {
-        viewModelScope.launch(Dispatchers.IO) {
+        generateJob?.cancel()
+        generateJob = viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
 
             try {
@@ -269,8 +275,6 @@ class ScanViewModel @Inject constructor(
 //                    2. "Advanced" questions should test edge cases, architectural decisions, conflict management, or scale limits based on their senior-level claims.
 //                    3. Keep generating items sequentially until you have populated at least 10-20 distinct objects in the array. Do not truncate the list.
 //                """.trimIndent()
-
-                val minimumQuestion = 25
 
                 val message = """
                     You are an expert technical interviewer and recruiter analyzing the attached resume image.
@@ -313,7 +317,8 @@ class ScanViewModel @Inject constructor(
 
 
     private fun generateQuestions(images: List<Bitmap>) {
-        viewModelScope.launch(Dispatchers.IO) {
+        generateJob?.cancel()
+        generateJob = viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
 
             try {
@@ -351,13 +356,11 @@ class ScanViewModel @Inject constructor(
 //                    3. Keep generating items sequentially until you have populated at least 10-20 distinct objects in the array. Do not truncate the list.
 //                """.trimIndent()
 
-                val minimumQuestion = 25
-
                 val message = """
                     You are an expert technical interviewer and recruiter analyzing the attached resume image.
 
                     TASK:
-                    Generate a highly professional, real-world interview question bank based ONLY on the candidate's experience, role, and skills shown in the resume. You must output minimum $minimumQuestion distinct questions and maximum possible questions.
+                    Generate a highly professional, real-world interview question bank based ONLY on the candidate's experience, role, and skills shown in the resume. You must output minimum $MINIMUM_QUESTIONS distinct questions and maximum possible questions.
 
                     QUESTION STYLE:
                     Create realistic, scenario-based, and technical questions tailored to their specific industry and seniority. Questions should be concise (1-2 sentences maximum) but challenging, reflecting actual interviews for their target role.
@@ -381,7 +384,7 @@ class ScanViewModel @Inject constructor(
                     1. Generate 15 "Skill" questions or more (focus on their designation or job rank).
                     2. Generate 5 "Lead" questions or more (focus on their designation or job rank).
                     3. Generate 5 "Behav" questions or more (focus on real-world problem solving).
-                    Ensure minimum $minimumQuestion questions are output in the "questions" array and maximum possible questions.
+                    Ensure minimum $MINIMUM_QUESTIONS questions are output in the "questions" array and maximum possible questions.
                 """.trimIndent()
 
                 gemmaInferenceHelper.generateResponse(
@@ -627,5 +630,10 @@ class ScanViewModel @Inject constructor(
             }
         }
         return result ?: "Unknown file"
+    }
+
+    companion object {
+        const val MINIMUM_QUESTIONS = 25
+        const val ESTIMATED_ANALYSIS_TIME_SECONDS = 25
     }
 }
