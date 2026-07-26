@@ -341,7 +341,7 @@ fun ModelDownloadScreenRoot(
                         )
                     ) {
                         Text(
-                            text = "Download Model (~${state.requiredGB} GB)",
+                            text = if (state.isModelDownloaded) "Re-download" else "Download Model (~${state.requiredGB} GB)",
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                             modifier = Modifier.padding(vertical = 4.dp)
                         )

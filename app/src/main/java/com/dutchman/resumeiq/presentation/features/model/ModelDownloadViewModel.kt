@@ -26,14 +26,15 @@ import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
 
 data class DownloadState(
     val progress: Int = 0,
-    val requiredGB: Double = 2.93,
+    val requiredGB: Double = 4.2,
     val currentBytes: Long = 0,
     val totalBytes: Long = 0,
     val speedMbPerSec: String = "0.0",
     val status: DownloadStatus = DownloadStatus.IDLE,
     val estimatedTimeRemaining: String = "",
     val fileName: String = "",
-    val hasEnoughStorage: Boolean = true
+    val hasEnoughStorage: Boolean = true,
+    val isModelDownloaded: Boolean = false
 )
 
 enum class DownloadStatus {
@@ -54,6 +55,7 @@ class ModelDownloadViewModel @Inject constructor(
 
     init {
         checkStorage()
+        _downloadState.update { it.copy(isModelDownloaded = userFactory.isModelDownloaded) }
         observeDownloadWork()
     }
 
@@ -82,6 +84,11 @@ class ModelDownloadViewModel @Inject constructor(
     }
 
     fun startDownload(modelUrl: String = Constants.MODEL_4B) {
+        if (userFactory.isModelDownloaded) {
+            fileStorage.deleteFile()
+            userFactory.saveIsModelDownloaded(false)
+            _downloadState.update { it.copy(isModelDownloaded = false, status = DownloadStatus.IDLE) }
+        }
         _downloadState.value = _downloadState.value.copy(fileName = FileStorage.DISPLAY_NAME)
         
         val constraints = Constraints.Builder()
@@ -147,7 +154,8 @@ class ModelDownloadViewModel @Inject constructor(
                                 totalBytes = totalBytes,
                                 speedMbPerSec = "0.0",
                                 status = DownloadStatus.SUCCESS,
-                                estimatedTimeRemaining = ""
+                                estimatedTimeRemaining = "",
+                                isModelDownloaded = true
                             )
                             val file = fileStorage.getDownloadedFile()
                             if (file != null) {
