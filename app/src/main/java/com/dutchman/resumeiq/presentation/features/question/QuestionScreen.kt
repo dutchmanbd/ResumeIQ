@@ -41,7 +41,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material.icons.filled.ArrowBack
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
@@ -53,6 +59,8 @@ fun QuestionScreen(
     val listState = rememberLazyListState()
     val lastSavedIndex by viewModel.lastQuestionIndex.collectAsStateWithLifecycle()
     val interviewer by viewModel.interviewer.collectAsStateWithLifecycle()
+    var isSelectionMode by remember { mutableStateOf(false) }
+    var selectedQuestionIds by remember { mutableStateOf(setOf<Long>()) }
 
     LaunchedEffect(questions.size) {
         if (questions.isNotEmpty() && listState.firstVisibleItemIndex == 0) {
@@ -66,10 +74,52 @@ fun QuestionScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Questions") },
+                title = { 
+                    if (isSelectionMode) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = selectedQuestionIds.size == questions.size && questions.isNotEmpty(),
+                                onCheckedChange = { checked ->
+                                    if (checked) {
+                                        selectedQuestionIds = questions.map { it.id }.toSet()
+                                    } else {
+                                        selectedQuestionIds = emptySet()
+                                    }
+                                }
+                            )
+                            Text("Select All", fontSize = 16.sp)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text("${selectedQuestionIds.size} Selected", fontSize = 16.sp)
+                        }
+                    } else {
+                        Text("Questions") 
+                    }
+                },
+                navigationIcon = {
+                    if (isSelectionMode) {
+                        IconButton(onClick = { 
+                            isSelectionMode = false
+                            selectedQuestionIds = emptySet()
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close selection")
+                        }
+                    }
+                },
                 actions = {
-                    IconButton(onClick = { navigator.navigate(MoreScreenDestination) }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    if (isSelectionMode) {
+                        IconButton(onClick = { 
+                            if (selectedQuestionIds.isNotEmpty()) {
+                                viewModel.deleteQuestions(selectedQuestionIds.toList())
+                                isSelectionMode = false
+                                selectedQuestionIds = emptySet()
+                            }
+                        }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete selected")
+                        }
+                    } else {
+                        IconButton(onClick = { navigator.navigate(MoreScreenDestination) }) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        }
                     }
                 }
             )
@@ -130,10 +180,27 @@ fun QuestionScreen(
                         tagTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         question = question.question,
                         isLastRead = index == lastSavedIndex && index >= 0,
+                        isSelected = selectedQuestionIds.contains(question.id),
                         onClick = {
-//                            val newIndex = listState.firstVisibleItemIndex
-                            viewModel.saveLastQuestionIndex(index)
-                            navigator.navigate(QuestionDetailScreenDestination(id = question.id))
+                            if (isSelectionMode) {
+                                if (selectedQuestionIds.contains(question.id)) {
+                                    selectedQuestionIds -= question.id
+                                    if (selectedQuestionIds.isEmpty()) {
+                                        isSelectionMode = false
+                                    }
+                                } else {
+                                    selectedQuestionIds += question.id
+                                }
+                            } else {
+                                viewModel.saveLastQuestionIndex(index)
+                                navigator.navigate(QuestionDetailScreenDestination(id = question.id))
+                            }
+                        },
+                        onLongClick = {
+                            if (!isSelectionMode) {
+                                isSelectionMode = true
+                                selectedQuestionIds += question.id
+                            }
                         },
                         bottomContent = {
                             Row(
@@ -179,6 +246,7 @@ fun QuestionScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun QuestionCard(
     tag: String,
@@ -186,19 +254,24 @@ fun QuestionCard(
     tagTextColor: Color = Color.Black,
     question: String,
     isLastRead: Boolean = false,
+    isSelected: Boolean = false,
     onClick: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null,
     bottomContent: @Composable () -> Unit
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surface
         ),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        border = if (isLastRead) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else if (isLastRead) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(

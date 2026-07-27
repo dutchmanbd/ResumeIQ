@@ -27,4 +27,7 @@ interface QuestionDao {
     
     @Query("DELETE FROM questions")
     suspend fun clearQuestions()
+
+    @Query("DELETE FROM questions WHERE id IN (:ids)")
+    suspend fun deleteQuestionsByIds(ids: List<Long>)
 }
