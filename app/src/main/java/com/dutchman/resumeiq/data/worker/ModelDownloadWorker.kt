@@ -101,12 +101,35 @@ class ModelDownloadWorker @AssistedInject constructor(
         }
 
         try {
-            val url = URL(fileUrl)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.connect()
+            var url = URL(fileUrl)
+            var connection: HttpURLConnection
+            var redirectCount = 0
+            val maxRedirects = 5
 
-            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
-                return@withContext Result.failure(workDataOf("ERROR" to "Server returned HTTP ${connection.responseCode} ${connection.responseMessage}"))
+            while (true) {
+                connection = url.openConnection() as HttpURLConnection
+                connection.instanceFollowRedirects = false
+                connection.connect()
+
+                val status = connection.responseCode
+                if (status == HttpURLConnection.HTTP_MOVED_TEMP || 
+                    status == HttpURLConnection.HTTP_MOVED_PERM || 
+                    status == HttpURLConnection.HTTP_SEE_OTHER ||
+                    status == 307 || status == 308) {
+                    
+                    val newUrl = connection.getHeaderField("Location")
+                    if (newUrl == null || redirectCount >= maxRedirects) {
+                        return@withContext Result.failure(workDataOf("ERROR" to "Too many redirects or missing Location header"))
+                    }
+                    url = URL(newUrl)
+                    redirectCount++
+                    continue
+                }
+
+                if (status != HttpURLConnection.HTTP_OK) {
+                    return@withContext Result.failure(workDataOf("ERROR" to "Server returned HTTP ${connection.responseCode} ${connection.responseMessage}"))
+                }
+                break
             }
 
             var totalBytes = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {

@@ -84,11 +84,10 @@ class ModelDownloadViewModel @Inject constructor(
     }
 
     fun startDownload(modelUrl: String = Constants.MODEL_4B) {
-        if (userFactory.isModelDownloaded) {
-            fileStorage.deleteFile()
-            userFactory.saveIsModelDownloaded(false)
-            _downloadState.update { it.copy(isModelDownloaded = false, status = DownloadStatus.IDLE) }
-        }
+        // Always delete the existing file to force a fresh re-download when triggered manually
+        fileStorage.deleteFile()
+        userFactory.saveIsModelDownloaded(false)
+        _downloadState.update { it.copy(isModelDownloaded = false, status = DownloadStatus.IDLE) }
         _downloadState.value = _downloadState.value.copy(fileName = FileStorage.DISPLAY_NAME)
         
         val constraints = Constraints.Builder()

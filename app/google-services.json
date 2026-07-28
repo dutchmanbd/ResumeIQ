@@ -12,7 +12,36 @@
           "package_name": "com.dutchman.resumeiq"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1099189657390-1t5o48duig1mhkk4lq5n8h0gf2lec9kk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dutchman.resumeiq",
+            "certificate_hash": "65a3c97f4274df8a765055f91da07d1c4a58f5ea"
+          }
+        },
+        {
+          "client_id": "1099189657390-9n2evlc68u79t5fhvihk7vlkluua2p3h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dutchman.resumeiq",
+            "certificate_hash": "928e895d8831345388b8d00eba9f65418017c656"
+          }
+        },
+        {
+          "client_id": "1099189657390-pnnil604nv1hvjoc63vu2een8d7nd3c4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dutchman.resumeiq",
+            "certificate_hash": "061abbaa05e7af3b7fa7172e6c7b67f71d940237"
+          }
+        },
+        {
+          "client_id": "1099189657390-1anr3g5o1220ndaf4akn54c2oqpqdgbi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDmgQ9Gmz6xlCHJZHI2KM6uYFOThynAdR0"
@@ -20,7 +49,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1099189657390-1anr3g5o1220ndaf4akn54c2oqpqdgbi.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

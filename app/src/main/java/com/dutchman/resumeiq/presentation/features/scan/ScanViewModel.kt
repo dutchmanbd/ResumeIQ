@@ -298,13 +298,14 @@ class ScanViewModel @Inject constructor(
                    
                 """.trimIndent()
 
-                val fullResult = gemmaInferenceHelper.generateResponse(
+                gemmaInferenceHelper.generateResponseStreaming(
                     prompt = message,
-                )
-                _uiState.update { it.copy(generatedQuestions = fullResult) }
+                ).collect { chunk ->
+                    _uiState.update { it.copy(generatedQuestions = it.generatedQuestions + chunk) }
+                }
 
                 _uiState.update { it.copy(isGenerating = false) }
-                val jsonString = _uiState.value.generatedQuestions;
+                val jsonString = _uiState.value.generatedQuestions
                 Log.d("ScanViewModel", "generateQuestions: $jsonString")
                 parseGeneratedQuestions(jsonString)
             } catch (e: Throwable) {
@@ -380,20 +381,21 @@ class ScanViewModel @Inject constructor(
                     - mobile : Get phone or mobile number for user.
                     
                     GENERATION REQUIREMENTS:
-                    1. Generate 15 "Skill" questions or more (focus on their designation or job rank).
+                    1. Generate 10 "Skill" questions or more (focus on their designation or job rank).
                     2. Generate 5 "Lead" questions or more (focus on their designation or job rank).
                     3. Generate 5 "Behav" questions or more (focus on real-world problem solving).
                     Ensure minimum $MINIMUM_QUESTIONS questions are output in the "questions" array and maximum possible questions.
                 """.trimIndent()
 
-                val fullResult = gemmaInferenceHelper.generateResponse(
+                gemmaInferenceHelper.generateResponseStreaming(
                     prompt = message,
                     images = images
-                )
-                _uiState.update { it.copy(generatedQuestions = fullResult) }
+                ).collect { chunk ->
+                    _uiState.update { it.copy(generatedQuestions = it.generatedQuestions + chunk) }
+                }
 
                 _uiState.update { it.copy(isGenerating = false) }
-                val jsonString = _uiState.value.generatedQuestions;
+                val jsonString = _uiState.value.generatedQuestions
                 Log.d("ScanViewModel", "generateQuestions: $jsonString")
                 parseGeneratedQuestions(jsonString)
             } catch (e: Throwable) {
@@ -631,7 +633,7 @@ class ScanViewModel @Inject constructor(
     }
 
     companion object {
-        const val MINIMUM_QUESTIONS = 25
+        const val MINIMUM_QUESTIONS = 10
         const val ESTIMATED_ANALYSIS_TIME_SECONDS = 25
     }
 }

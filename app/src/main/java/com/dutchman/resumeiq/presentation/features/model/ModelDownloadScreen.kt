@@ -73,9 +73,11 @@ fun ModelDownloadScreen(
     LaunchedEffect(state.status) {
         if (state.status == DownloadStatus.SUCCESS) {
             viewModel.onEvent(MainEvent.RefreshModel)
-            navigator.navigate(QuestionScreenDestination) {
-                popUpTo(ModelDownloadScreenDestination) {
-                    inclusive = true
+            if(!showBackButton){
+                navigator.navigate(QuestionScreenDestination) {
+                    popUpTo(ModelDownloadScreenDestination) {
+                        inclusive = true
+                    }
                 }
             }
         }
@@ -167,7 +169,11 @@ fun ModelDownloadScreenRoot(
 
             // Content
             Text(
-                text = if (state.status == DownloadStatus.ERROR) "Download Failed" else "Preparing Your AI Assistant",
+                text = when {
+                    state.status == DownloadStatus.ERROR -> "Download Failed"
+                    state.isModelDownloaded -> "AI Assistant Ready"
+                    else -> "Preparing Your AI Assistant"
+                },
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                 color = if (state.status == DownloadStatus.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
@@ -176,10 +182,11 @@ fun ModelDownloadScreenRoot(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = if (state.status == DownloadStatus.ERROR) 
-                    "Please check your internet connection and try again." 
-                else 
-                    "Downloading the latest interview analysis model for offline performance.",
+                text = when {
+                    state.status == DownloadStatus.ERROR -> "Please check your internet connection and try again."
+                    state.isModelDownloaded -> "The interview analysis model is already downloaded and ready for offline use."
+                    else -> "Downloading the latest interview analysis model for offline performance."
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -318,8 +325,8 @@ fun ModelDownloadScreenRoot(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            if (state.status == DownloadStatus.IDLE || state.status == DownloadStatus.DOWNLOADING) {
-                if (state.status == DownloadStatus.IDLE) {
+            if (state.status == DownloadStatus.IDLE || state.status == DownloadStatus.DOWNLOADING || state.status == DownloadStatus.SUCCESS) {
+                if (state.status == DownloadStatus.IDLE || state.status == DownloadStatus.SUCCESS) {
                     if (!state.hasEnoughStorage) {
                         Text(
                             text = "Insufficient storage. ${state.requiredGB} GB required.",
@@ -365,19 +372,21 @@ fun ModelDownloadScreenRoot(
                     }
                 }
 
-                OutlinedButton(
-                    onClick = onSkip,
-                    enabled = state.status != DownloadStatus.DOWNLOADING,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = "Skip for Now",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
+                if (!state.isModelDownloaded && state.status != DownloadStatus.SUCCESS) {
+                    OutlinedButton(
+                        onClick = onSkip,
+                        enabled = state.status != DownloadStatus.DOWNLOADING,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "Skip for Now",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
                 }
             }
 
