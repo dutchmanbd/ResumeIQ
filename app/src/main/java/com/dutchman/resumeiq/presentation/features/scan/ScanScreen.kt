@@ -130,9 +130,7 @@ fun ScanScreen(
         viewModel.event.collectLatest { effect ->
             when (effect) {
                 is ScanEffect.NavigateToQuestionPreview -> {
-                    if (uiState.parsedQuestions.isNotEmpty()) {
-                        navigator.navigate(QuestionPreviewScreenDestination)
-                    }
+                    navigator.navigate(QuestionPreviewScreenDestination)
                 }
             }
         }

@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -46,9 +47,9 @@ class ScanViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ScanUiState())
     val uiState = _uiState.asStateFlow()
 
-    private val _event = MutableSharedFlow<ScanEffect>()
-    val event: SharedFlow<ScanEffect>
-        get() = _event.asSharedFlow()
+    private val _event = kotlinx.coroutines.channels.Channel<ScanEffect>()
+    val event: kotlinx.coroutines.flow.Flow<ScanEffect>
+        get() = _event.receiveAsFlow()
         
     private var speechJob: Job? = null
     private var generateJob: Job? = null
@@ -257,7 +258,7 @@ class ScanViewModel @Inject constructor(
                     Generate a highly professional, real-world interview question bank based ONLY ${uiState.value.promptText}.
 
                     QUESTION STYLE:
-                    Create realistic, scenario-based, and technical questions tailored to their specific industry and seniority. Questions should be concise (1-2 sentences maximum) but challenging, reflecting actual interviews for their target role.
+                    Create realistic, scenario-based, and technical questions tailored to their specific industry and seniority. Questions MUST be extremely concise (1 short sentence maximum) to ensure fast generation.
 
                     JSON OUTPUT FORMAT:
                     Output EXCLUSIVELY a raw JSON object. Do not include markdown tags like ```json, do not write code blocks, and do not write closing/opening chat greetings. Use this exact compact schema:
@@ -266,10 +267,12 @@ class ScanViewModel @Inject constructor(
                     
                     FIELD DESCRIPTIONS:
                     - questions: The array containing the generated questions.
-                    - c (Category): Must be exactly one of: "Skill" (Technical/Core Skills), "Lead" (Leadership/Mentoring), "Behav" (Behavioral/Scenario).
+                    - c (Category): Must be exactly one of: "Skill", "Lead", "Behav".
                     - l (Level): Must be exactly one of: "Basic" or "Adv".
                     - q (Question): The actual question text.
-                   
+                    
+                    GENERATION REQUIREMENTS:
+                    Ensure exactly 5-6 questions are output in the "questions" array. DO NOT generate more questions to keep generation time short. Keep responses extremely brief.
                 """.trimIndent()
 
                 llmInterface.generateResponseStreaming(
@@ -309,31 +312,27 @@ class ScanViewModel @Inject constructor(
                     You are an expert technical interviewer and recruiter analyzing the attached resume image.
 
                     TASK:
-                    Generate a highly professional, real-world interview question bank based ONLY on the candidate's experience, role, and skills shown in the resume. You must output minimum $MINIMUM_QUESTIONS distinct questions and maximum possible questions.
+                    Generate a highly professional, real-world interview question bank based ONLY on the candidate's experience, role, and skills shown in the resume. 
 
                     QUESTION STYLE:
-                    Create realistic, scenario-based, and technical questions tailored to their specific industry and seniority. Questions should be concise (1-2 sentences maximum) but challenging, reflecting actual interviews for their target role.
+                    Create realistic, scenario-based, and technical questions tailored to their specific industry and seniority. Questions MUST be extremely concise (1 short sentence maximum) to ensure fast generation.
 
                     JSON OUTPUT FORMAT:
                     Output EXCLUSIVELY a raw JSON object. Do not include markdown tags like ```json, do not write code blocks, and do not write closing/opening chat greetings. Use this exact compact schema:
 
-                    {"questions": [{"c": "Skill | Lead | Behav", "l": "Basic | Adv", "q": "The professional interview question."}], "info":{ "name":"Jewel Rana", "designation":"Senior Mobile Application Developer", "Mobile":"+8801812386609"}}
+                    {"questions": [{"c": "Skill | Lead | Behav", "l": "Basic | Adv", "q": "The professional interview question."}], "info":{ "name":"XXX", "designation":"XXXX", "mobile":"XXX"}}
                     
                     FIELD DESCRIPTIONS:
                     - questions: The array containing the generated questions.
-                    - c (Category): Must be exactly one of: "Skill" (Technical/Core Skills), "Lead" (Leadership/Mentoring), "Behav" (Behavioral/Scenario).
+                    - c (Category): Must be exactly one of: "Skill", "Lead", "Behav".
                     - l (Level): Must be exactly one of: "Basic" or "Adv".
                     - q (Question): The actual question text.
-                    - info: Information from selected resume.
-                    - name : Get Name for user.
-                    - designation : Get designation or current job title for user.
-                    - mobile : Get phone or mobile number for user.
-                    
+                 
                     GENERATION REQUIREMENTS:
-                    1. Generate 5 "Skill" questions or more (focus on their designation or job rank).
-                    2. Generate 5 "Lead" questions or more (focus on their designation or job rank).
-                    3. Generate 5 "Behav" questions or more (focus on real-world problem solving).
-                    Ensure minimum $MINIMUM_QUESTIONS questions are output in the "questions" array and maximum possible questions.
+                    1. Generate exactly 3 "Skill" questions.
+                    2. Generate exactly 3 "Lead" questions.
+                    3. Generate exactly 3 "Behav" questions.
+                    Ensure exactly 9 questions are output in the "questions" array. DO NOT generate more than 9 questions. Keep responses brief to optimize generation time.
                 """.trimIndent()
 
                 llmInterface.generateResponseStreaming(
@@ -356,6 +355,7 @@ class ScanViewModel @Inject constructor(
 
     private fun parseGeneratedQuestions(jsonString: String) {
         try {
+            Log.e("ScanViewModel", "parseGeneratedQuestions: $jsonString", )
             val parsedList = mutableListOf<Question>()
 
             // Try to find a JSON object
@@ -475,7 +475,7 @@ class ScanViewModel @Inject constructor(
             if (parsedList.isNotEmpty()) {
                 _uiState.update { it.copy(parsedQuestions = parsedList) }
                 viewModelScope.launch {
-                    _event.emit(ScanEffect.NavigateToQuestionPreview)
+                    _event.send(ScanEffect.NavigateToQuestionPreview)
                 }
             } else {
                 // Fallback: If parsing totally fails, at least show the raw text as one big question so user sees something happened
@@ -487,6 +487,9 @@ class ScanViewModel @Inject constructor(
                     )
                 )
                 _uiState.update { it.copy(parsedQuestions = parsedList) }
+                viewModelScope.launch {
+                    _event.send(ScanEffect.NavigateToQuestionPreview)
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -499,6 +502,9 @@ class ScanViewModel @Inject constructor(
                 )
             )
             _uiState.update { it.copy(parsedQuestions = fallbackList) }
+            viewModelScope.launch {
+                _event.send(ScanEffect.NavigateToQuestionPreview)
+            }
         }
     }
 
