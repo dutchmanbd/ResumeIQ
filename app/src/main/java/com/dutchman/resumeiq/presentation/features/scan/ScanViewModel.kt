@@ -18,7 +18,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanner
 
-import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
+import com.dutchman.resumeiq.domain.ai.LlmInterface
 import com.dutchman.resumeiq.domain.models.Interviewer
 import com.dutchman.resumeiq.domain.models.Question
 import com.dutchman.resumeiq.domain.util.FileStorage
@@ -35,7 +35,7 @@ import kotlinx.coroutines.Job
 
 @HiltViewModel
 class ScanViewModel @Inject constructor(
-    private val gemmaInferenceHelper: GemmaInferenceHelper,
+    private val llmInterface: LlmInterface,
     private val fileStorage: FileStorage,
     private val questionDao: QuestionDao,
     private val userFactory: UserFactory,
@@ -244,37 +244,11 @@ class ScanViewModel @Inject constructor(
             try {
                 val file = fileStorage.getDownloadedFile()
                 if (file != null) {
-                    gemmaInferenceHelper.initialize(file.absolutePath)
+                    llmInterface.initialize(file.absolutePath)
                 } else {
                     _uiState.update { it.copy(isGenerating = false) }
                     return@launch
                 }
-
-//                val message = """
-//                    You are an expert technical interviewer and executive recruiter. Your task is to analyze the text inside the provided resume image and generate a robust question bank for the interviewer.
-//
-//                    OUTPUT REQUIREMENT:
-//                    You must generate a MINIMUM of 10 and a MAXIMUM of 20 distinct interview questions.
-//
-//                    For each question, you must assign a difficulty level ("Basic" or "Advanced") and map it to one of these primary categories: "Technical Skill", "Leadership", "Behavioral", or "Project-Specific".
-//
-//                    Output your response EXCLUSIVELY as a valid JSON object. Do not include introductory text, markdown code blocks (like ```json), or explanatory notes. Follow this JSON schema exactly:
-//
-//                    {
-//                      "questions": [
-//                        {
-//                          "question": "The actual question text here",
-//                          "difficulty": "Basic or Advanced",
-//                          "category": "Technical Skill, Leadership, Behavioral, or Project-Specific"
-//                        }
-//                      ]
-//                    }
-//
-//                    CRITICAL RULES FOR GENERATION:
-//                    1. "Basic" questions should verify core competencies, standard tools, and fundamental behaviors mentioned.
-//                    2. "Advanced" questions should test edge cases, architectural decisions, conflict management, or scale limits based on their senior-level claims.
-//                    3. Keep generating items sequentially until you have populated at least 10-20 distinct objects in the array. Do not truncate the list.
-//                """.trimIndent()
 
                 val message = """
                     You are an expert technical interviewer and recruiter analyzing the attached resume image.
@@ -298,7 +272,7 @@ class ScanViewModel @Inject constructor(
                    
                 """.trimIndent()
 
-                gemmaInferenceHelper.generateResponseStreaming(
+                llmInterface.generateResponseStreaming(
                     prompt = message,
                 ).collect { chunk ->
                     _uiState.update { it.copy(generatedQuestions = it.generatedQuestions + chunk) }
@@ -324,37 +298,12 @@ class ScanViewModel @Inject constructor(
             try {
                 val file = fileStorage.getDownloadedFile()
                 if (file != null) {
-                    gemmaInferenceHelper.initialize(file.absolutePath)
+                    llmInterface.initialize(file.absolutePath)
                 } else {
                     _uiState.update { it.copy(isGenerating = false) }
                     return@launch
                 }
 
-//                val message = """
-//                    You are an expert technical interviewer and executive recruiter. Your task is to analyze the text inside the provided resume image and generate a robust question bank for the interviewer.
-//
-//                    OUTPUT REQUIREMENT:
-//                    You must generate a MINIMUM of 10 and a MAXIMUM of 20 distinct interview questions.
-//
-//                    For each question, you must assign a difficulty level ("Basic" or "Advanced") and map it to one of these primary categories: "Technical Skill", "Leadership", "Behavioral", or "Project-Specific".
-//
-//                    Output your response EXCLUSIVELY as a valid JSON object. Do not include introductory text, markdown code blocks (like ```json), or explanatory notes. Follow this JSON schema exactly:
-//
-//                    {
-//                      "questions": [
-//                        {
-//                          "question": "The actual question text here",
-//                          "difficulty": "Basic or Advanced",
-//                          "category": "Technical Skill, Leadership, Behavioral, or Project-Specific"
-//                        }
-//                      ]
-//                    }
-//
-//                    CRITICAL RULES FOR GENERATION:
-//                    1. "Basic" questions should verify core competencies, standard tools, and fundamental behaviors mentioned.
-//                    2. "Advanced" questions should test edge cases, architectural decisions, conflict management, or scale limits based on their senior-level claims.
-//                    3. Keep generating items sequentially until you have populated at least 10-20 distinct objects in the array. Do not truncate the list.
-//                """.trimIndent()
 
                 val message = """
                     You are an expert technical interviewer and recruiter analyzing the attached resume image.
@@ -381,13 +330,13 @@ class ScanViewModel @Inject constructor(
                     - mobile : Get phone or mobile number for user.
                     
                     GENERATION REQUIREMENTS:
-                    1. Generate 10 "Skill" questions or more (focus on their designation or job rank).
+                    1. Generate 5 "Skill" questions or more (focus on their designation or job rank).
                     2. Generate 5 "Lead" questions or more (focus on their designation or job rank).
                     3. Generate 5 "Behav" questions or more (focus on real-world problem solving).
                     Ensure minimum $MINIMUM_QUESTIONS questions are output in the "questions" array and maximum possible questions.
                 """.trimIndent()
 
-                gemmaInferenceHelper.generateResponseStreaming(
+                llmInterface.generateResponseStreaming(
                     prompt = message,
                     images = images
                 ).collect { chunk ->

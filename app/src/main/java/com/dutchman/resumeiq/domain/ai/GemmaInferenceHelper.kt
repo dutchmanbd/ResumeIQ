@@ -26,11 +26,11 @@ class GemmaInferenceHelper(
      * MediaPipe to throw "Vision modality is not enabled" at `addImage` time.
      */
     private val supportsVision: Boolean = false,
-) {
+) : LlmInterface {
     private var llmInference: LlmInference? = null
     private var session: LlmInferenceSession? = null
 
-    suspend fun initialize(modelPath: String) = withContext(Dispatchers.IO) {
+    override suspend fun initialize(modelPath: String) = withContext(Dispatchers.IO) {
         if (llmInference != null) return@withContext
         val modelFile = File(modelPath)
         require(modelFile.exists()) { "Model file does not exist: $modelPath" }
@@ -42,6 +42,7 @@ class GemmaInferenceHelper(
         val builder = LlmInference.LlmInferenceOptions.builder()
             .setModelPath(modelPath)
             .setMaxTokens(MAX_TOKENS)
+            .setPreferredBackend(LlmInference.Backend.DEFAULT)
 //            .setMaxTopK(64)
 
         if (supportsVision) {
@@ -51,9 +52,9 @@ class GemmaInferenceHelper(
         llmInference = LlmInference.createFromOptions(context, builder.build())
     }
 
-    suspend fun generateResponse(
+    override suspend fun generateResponse(
         prompt: String,
-        images: List<Bitmap> = emptyList()
+        images: List<Bitmap>
     ): String = withContext(Dispatchers.IO) {
         val inference = llmInference
         if (inference == null) {
@@ -107,9 +108,9 @@ class GemmaInferenceHelper(
         }
     }
 
-    fun generateResponseStreaming(
+    override fun generateResponseStreaming(
         prompt: String,
-        images: List<Bitmap> = emptyList()
+        images: List<Bitmap>
     ): Flow<String> = callbackFlow {
         val inference = llmInference
         if (inference == null) {
@@ -174,13 +175,13 @@ class GemmaInferenceHelper(
         runCatching { s.close() }
     }
 
-    fun closeSession() {
+    override fun closeSession() {
         val s = session
         session = null
         disposeInferenceSession(s)
     }
 
-    fun release() {
+    override fun release() {
         closeSession()
         llmInference?.close()
         llmInference = null

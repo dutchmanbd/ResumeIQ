@@ -2,7 +2,8 @@ package com.dutchman.resumeiq.di
 
 import android.content.ClipboardManager
 import android.content.Context
-import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
+import com.dutchman.resumeiq.domain.ai.LlmInterface
+import com.dutchman.resumeiq.domain.ai.LiteRtInferenceHelper
 import com.dutchman.resumeiq.domain.util.SharedPref
 import com.dutchman.resumeiq.domain.util.UserFactory
 import androidx.room.Room
@@ -47,9 +48,9 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideGemmaInferenceHelper(
+    fun provideLlmInterface(
         @ApplicationContext context: Context
-    ) = GemmaInferenceHelper(context, supportsVision = true)
+    ): LlmInterface = LiteRtInferenceHelper(context, useGpuForText = false, supportsVision = true)
 
     @Provides
     @Singleton

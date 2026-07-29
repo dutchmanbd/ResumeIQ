@@ -4,8 +4,9 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
-import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
+import com.dutchman.resumeiq.domain.ai.LlmInterface
 import com.dutchman.resumeiq.domain.util.FileStorage
+import com.dutchman.resumeiq.domain.util.SharedPref
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -18,7 +19,10 @@ class ResumeIQ : Application(), Configuration.Provider {
     lateinit var workerFactory: HiltWorkerFactory
 
     @Inject
-    lateinit var gemmaInferenceHelper: GemmaInferenceHelper
+    lateinit var sharedPref: SharedPref
+
+    @Inject
+    lateinit var llmInterface: LlmInterface
 
     @Inject
     lateinit var fileStorage: FileStorage
@@ -29,8 +33,9 @@ class ResumeIQ : Application(), Configuration.Provider {
             val file = fileStorage.getDownloadedFile()
             if (file != null) {
                 try {
-                    gemmaInferenceHelper.initialize(file.absolutePath)
-                } catch (e: Exception) {
+                    llmInterface.initialize(file.absolutePath)
+                } catch (e: Throwable) {
+                    android.util.Log.e("ResumeIQ", "Failed to initialize LLM", e)
                 }
             }
         }

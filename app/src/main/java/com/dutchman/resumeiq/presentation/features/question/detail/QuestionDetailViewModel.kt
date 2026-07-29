@@ -13,7 +13,7 @@ import androidx.lifecycle.viewModelScope
 import com.dutchman.resumeiq.data.local.dao.QuestionDao
 import com.dutchman.resumeiq.data.local.entity.QuestionEntity
 import com.dutchman.resumeiq.data.local.entity.toDomain
-import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
+import com.dutchman.resumeiq.domain.ai.LlmInterface
 import com.dutchman.resumeiq.domain.models.Question
 import com.dutchman.resumeiq.domain.util.ExternalAppManager
 import com.dutchman.resumeiq.domain.util.FileStorage
@@ -37,7 +37,7 @@ class QuestionDetailViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val application: Application,
     private val questionDao: QuestionDao,
-    private val gemmaInferenceHelper: GemmaInferenceHelper,
+    private val llmInterface: LlmInterface,
     private val translatorManager: TranslatorManager,
     private val externalAppManager: ExternalAppManager,
     private val clipboardManager: ClipboardManager,
@@ -148,7 +148,7 @@ class QuestionDetailViewModel @Inject constructor(
             try {
                 val file = fileStorage.getDownloadedFile()
                 if (file != null) {
-                    gemmaInferenceHelper.initialize(file.absolutePath)
+                    llmInterface.initialize(file.absolutePath)
                 } else {
                     _isGenerating.value = false
                     return@launch
@@ -163,7 +163,7 @@ class QuestionDetailViewModel @Inject constructor(
                     3. Output ONLY the raw response text. Do not wrap the output in markdown code blocks.
                 """.trimIndent()
 
-                gemmaInferenceHelper.generateResponseStreaming(prompt).collect { partialResult ->
+                llmInterface.generateResponseStreaming(prompt).collect { partialResult ->
                     _generatedAnswer.value += partialResult
                 }
 

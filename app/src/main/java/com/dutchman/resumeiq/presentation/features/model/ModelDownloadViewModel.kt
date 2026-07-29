@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.dutchman.resumeiq.domain.ai.GemmaInferenceHelper
+import com.dutchman.resumeiq.domain.ai.LlmInterface
 
 data class DownloadState(
     val progress: Int = 0,
@@ -45,7 +45,7 @@ enum class DownloadStatus {
 class ModelDownloadViewModel @Inject constructor(
     application: Application,
     private val userFactory: UserFactory,
-    private val gemmaInferenceHelper: GemmaInferenceHelper,
+    private val llmInterface: LlmInterface,
     private val fileStorage: FileStorage
 ) : AndroidViewModel(application) {
 
@@ -160,7 +160,7 @@ class ModelDownloadViewModel @Inject constructor(
                             if (file != null) {
                                 viewModelScope.launch {
                                     try {
-                                        gemmaInferenceHelper.initialize(file.absolutePath)
+                                        llmInterface.initialize(file.absolutePath)
                                     } catch (e: Exception) {
                                         e.printStackTrace()
                                     }

@@ -122,7 +122,7 @@ dependencies {
 
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.mediapipe.tasks.genai)
-//    implementation(libs.litert.lm)
+    implementation(libs.litert.lm)
     implementation(libs.mediapipe.tasks.vision)
     implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.coil.compose)
