@@ -220,10 +220,13 @@ class ScanViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isProcessing = true) }
 
-            val fileName = getFileName(uri, context)
+            // Perform file IO on background thread
+            val (fileName, bitmaps) = withContext(Dispatchers.IO) {
+                val name = getFileName(uri, context)
+                val extracted = extractImageOrPdfPages(uri, context)
+                Pair(name, extracted)
+            }
 
-            // Extract pages for PDF or Image
-            val bitmaps = extractImageOrPdfPages(uri, context)
             _uiState.update {
                 it.copy(
                     isProcessing = false,
@@ -275,11 +278,23 @@ class ScanViewModel @Inject constructor(
                     Ensure exactly 5-6 questions are output in the "questions" array. DO NOT generate more questions to keep generation time short. Keep responses extremely brief.
                 """.trimIndent()
 
+                var bufferedText = ""
+                var lastUpdateTime = System.currentTimeMillis()
+
                 llmInterface.generateResponseStreaming(
                     prompt = message,
                 ).collect { chunk ->
-                    _uiState.update { it.copy(generatedQuestions = it.generatedQuestions + chunk) }
+                    bufferedText += chunk
+                    val currentTime = System.currentTimeMillis()
+                    if (currentTime - lastUpdateTime > 50) {
+                        val newText = bufferedText
+                        _uiState.update { it.copy(generatedQuestions = newText) }
+                        lastUpdateTime = currentTime
+                    }
                 }
+                
+                // Final update to ensure no chunk is missed
+                _uiState.update { it.copy(generatedQuestions = bufferedText) }
 
                 _uiState.update { it.copy(isGenerating = false) }
                 val jsonString = _uiState.value.generatedQuestions
@@ -308,39 +323,53 @@ class ScanViewModel @Inject constructor(
                 }
 
 
-                val message = """
-                    You are an expert technical interviewer and recruiter analyzing the attached resume image.
+//                val message = """
+//                    You are an expert technical interviewer and recruiter analyzing the attached resume image.
+//
+//                    TASK:
+//                    Generate a highly professional, real-world interview question bank based ONLY on the candidate's experience, role, and skills shown in the resume.
+//
+//                    QUESTION STYLE:
+//                    Create realistic, scenario-based, and technical questions tailored to their specific industry and seniority. Questions MUST be extremely concise (1 short sentence maximum) to ensure fast generation.
+//
+//                    JSON OUTPUT FORMAT:
+//                    Output EXCLUSIVELY a raw JSON object. Do not include markdown tags like ```json, do not write code blocks, and do not write closing/opening chat greetings. Use this exact compact schema:
+//
+//                    {"questions": [{"c": "Skill | Lead | Behav", "l": "Basic | Adv", "q": "The professional interview question."}], "info":{ "name":"XXX", "designation":"XXXX", "mobile":"XXX"}}
+//
+//                    FIELD DESCRIPTIONS:
+//                    - questions: The array containing the generated questions.
+//                    - c (Category): Must be exactly one of: "Skill", "Lead", "Behav".
+//                    - l (Level): Must be exactly one of: "Basic" or "Adv".
+//                    - q (Question): The actual question text.
+//
+//                    GENERATION REQUIREMENTS:
+//                    1. Generate exactly 3 "Skill" questions.
+//                    2. Generate exactly 3 "Lead" questions.
+//                    3. Generate exactly 3 "Behav" questions.
+//                    Ensure exactly 9 questions are output in the "questions" array. DO NOT generate more than 9 questions. Keep responses brief to optimize generation time.
+//                """.trimIndent()
 
-                    TASK:
-                    Generate a highly professional, real-world interview question bank based ONLY on the candidate's experience, role, and skills shown in the resume. 
 
-                    QUESTION STYLE:
-                    Create realistic, scenario-based, and technical questions tailored to their specific industry and seniority. Questions MUST be extremely concise (1 short sentence maximum) to ensure fast generation.
-
-                    JSON OUTPUT FORMAT:
-                    Output EXCLUSIVELY a raw JSON object. Do not include markdown tags like ```json, do not write code blocks, and do not write closing/opening chat greetings. Use this exact compact schema:
-
-                    {"questions": [{"c": "Skill | Lead | Behav", "l": "Basic | Adv", "q": "The professional interview question."}], "info":{ "name":"XXX", "designation":"XXXX", "mobile":"XXX"}}
-                    
-                    FIELD DESCRIPTIONS:
-                    - questions: The array containing the generated questions.
-                    - c (Category): Must be exactly one of: "Skill", "Lead", "Behav".
-                    - l (Level): Must be exactly one of: "Basic" or "Adv".
-                    - q (Question): The actual question text.
-                 
-                    GENERATION REQUIREMENTS:
-                    1. Generate exactly 3 "Skill" questions.
-                    2. Generate exactly 3 "Lead" questions.
-                    3. Generate exactly 3 "Behav" questions.
-                    Ensure exactly 9 questions are output in the "questions" array. DO NOT generate more than 9 questions. Keep responses brief to optimize generation time.
-                """.trimIndent()
+                val message = "Generate interview questions from above images and return json text"
+                var bufferedText = ""
+                var lastUpdateTime = System.currentTimeMillis()
 
                 llmInterface.generateResponseStreaming(
                     prompt = message,
                     images = images
                 ).collect { chunk ->
-                    _uiState.update { it.copy(generatedQuestions = it.generatedQuestions + chunk) }
+                    bufferedText += chunk
+                    val currentTime = System.currentTimeMillis()
+                    if (currentTime - lastUpdateTime > 50) {
+                        val newText = bufferedText
+                        _uiState.update { it.copy(generatedQuestions = newText) }
+                        lastUpdateTime = currentTime
+                    }
                 }
+
+                // Final update to ensure no chunk is missed
+                _uiState.update { it.copy(generatedQuestions = bufferedText) }
 
                 _uiState.update { it.copy(isGenerating = false) }
                 val jsonString = _uiState.value.generatedQuestions

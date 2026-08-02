@@ -17,13 +17,19 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.dutchman.resumeiq.domain.ai.LlmInterface
 import javax.inject.Inject
 
 @HiltViewModel
 class QuestionViewModel @Inject constructor(
     private val questionDao: QuestionDao,
-    private val userFactory: UserFactory
+    private val userFactory: UserFactory,
+    private val llmInterface: LlmInterface
 ) : ViewModel() {
+
+    val isModelDownloaded: StateFlow<Boolean> = MutableStateFlow(userFactory.isModelDownloaded).asStateFlow()
+    val isModelInitialized: StateFlow<Boolean> = llmInterface.isInitialized
+
 
     val questions: StateFlow<List<Question>> = questionDao.getAllQuestions()
         .map { entities -> entities.map { it.toDomain() } }

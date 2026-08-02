@@ -50,7 +50,7 @@ object AppModule {
     @Singleton
     fun provideLlmInterface(
         @ApplicationContext context: Context
-    ): LlmInterface = LiteRtInferenceHelper(context, useGpuForText = false, supportsVision = true)
+    ): LlmInterface = LiteRtInferenceHelper(context, useGpuForText = true, supportsVision = true)
 
     @Provides
     @Singleton

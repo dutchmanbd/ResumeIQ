@@ -80,6 +80,7 @@ subprojects {
             freeCompilerArgs.addAll(
                 listOf(
                     "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+                    "-opt-in=com.google.ai.edge.litertlm.ExperimentalApi",
                 )
             )
         }

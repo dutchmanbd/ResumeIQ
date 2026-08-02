@@ -5,9 +5,10 @@ import android.graphics.Bitmap
 import android.util.Log
 import com.google.ai.edge.litertlm.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
@@ -25,6 +26,9 @@ class LiteRtInferenceHelper(
     private var engine: Engine? = null
     private var conversation: Conversation? = null
 
+    private val _isInitialized = MutableStateFlow(false)
+    override val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
+
     companion object {
         private const val TAG = "LiteRtInferenceHelper"
     }
@@ -33,22 +37,43 @@ class LiteRtInferenceHelper(
         if (engine != null) return@withContext
         try {
             val visionBackend = if (supportsVision) Backend.GPU() else null
-            val textBackend = if (useGpuForText) Backend.GPU() else Backend.CPU()
             
-            val engineConfig = EngineConfig(
-                modelPath = modelPath,
-                backend = textBackend,
-                visionBackend = visionBackend,
-                maxNumTokens = 32000,
-                maxNumImages = 4,
-                cacheDir = context.getExternalFilesDir(null)?.absolutePath
-            )
+            var newEngine: Engine? = null
+            val backendsToTry = if (useGpuForText) {
+                listOf(Backend.GPU(), Backend.CPU())
+            } else {
+                listOf(Backend.CPU(), Backend.GPU())
+            }
             
-            val newEngine = Engine(engineConfig)
-            newEngine.initialize()
+            for (backend in backendsToTry) {
+                try {
+                    val engineConfig = EngineConfig(
+                        modelPath = modelPath,
+                        backend = backend,
+                        visionBackend = visionBackend,
+                        maxNumTokens = 4000,
+                        maxNumImages = 4,
+                        cacheDir = context.getExternalFilesDir(null)?.absolutePath
+                    )
+                    val candidateEngine = Engine(engineConfig)
+                    candidateEngine.initialize()
+                    newEngine = candidateEngine
+                    Log.d(TAG, "Gemma LiteRT engine initialized successfully with backend: $backend")
+                    break
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to initialize engine with backend $backend", e)
+                }
+            }
+
+            if (newEngine == null) {
+                throw IllegalStateException("Failed to initialize engine with any backend")
+            }
+            
             engine = newEngine
+            _isInitialized.value = true
             Log.d(TAG, "Gemma LiteRT engine initialized successfully.")
         } catch (e: Exception) {
+            _isInitialized.value = false
             Log.e(TAG, "Failed to initialize Gemma LiteRT engine", e)
             throw e
         }
@@ -76,8 +101,8 @@ class LiteRtInferenceHelper(
 
         val contents = mutableListOf<Content>()
 
-        // For multimodal models, pass images first
-        images.forEach { bitmap ->
+        // For multimodal models, pass images first (up to maxNumImages=4)
+        images.take(4).forEach { bitmap ->
             contents.add(Content.ImageBytes(bitmap.toPngByteArray()))
         }
 
@@ -110,7 +135,7 @@ class LiteRtInferenceHelper(
         
         val contents = mutableListOf<Content>()
 
-        images.forEach { bitmap ->
+        images.take(4).forEach { bitmap ->
             contents.add(Content.ImageBytes(bitmap.toPngByteArray()))
         }
 
@@ -151,7 +176,34 @@ class LiteRtInferenceHelper(
 
     private fun Bitmap.toPngByteArray(): ByteArray {
         val stream = ByteArrayOutputStream()
-        this.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        val resizedBitmap = this.resize(1024)
+        resizedBitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        if (resizedBitmap != this) {
+            resizedBitmap.recycle()
+        }
         return stream.toByteArray()
+    }
+    
+    private fun Bitmap.resize(maxSize: Int): Bitmap {
+        val originalWidth = this.width
+        val originalHeight = this.height
+
+        if (originalWidth <= maxSize && originalHeight <= maxSize) {
+            return this
+        }
+
+        val aspectRatio: Float = originalWidth.toFloat() / originalHeight.toFloat()
+        val newWidth: Int
+        val newHeight: Int
+
+        if (aspectRatio > 1) {
+            newWidth = maxSize
+            newHeight = (maxSize / aspectRatio).toInt().coerceAtLeast(1)
+        } else {
+            newHeight = maxSize
+            newWidth = (maxSize * aspectRatio).toInt().coerceAtLeast(1)
+        }
+
+        return Bitmap.createScaledBitmap(this, newWidth, newHeight, true)
     }
 }

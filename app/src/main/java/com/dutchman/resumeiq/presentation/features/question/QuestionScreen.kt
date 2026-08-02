@@ -234,12 +234,29 @@ fun QuestionScreen(
                     .align(Alignment.BottomEnd)
                     .padding(end = 16.dp, bottom = 16.dp)
             ) {
+                val isDownloaded by viewModel.isModelDownloaded.collectAsStateWithLifecycle()
+                val isInitialized by viewModel.isModelInitialized.collectAsStateWithLifecycle()
+                val isFabEnabled = !isDownloaded || isInitialized
+
                 FloatingActionButton(
-                    onClick = { navigator.navigate(ScanScreenDestination) },
-                    containerColor = MaterialTheme.colorScheme.primary,
+                    onClick = { 
+                        if (isFabEnabled) {
+                            navigator.navigate(ScanScreenDestination) 
+                        }
+                    },
+                    containerColor = if (isFabEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = if (isFabEnabled) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                     shape = CircleShape
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Scan", tint = Color.White)
+                    if (isDownloaded && !isInitialized) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(Icons.Default.Add, contentDescription = "Scan")
+                    }
                 }
             }
         }

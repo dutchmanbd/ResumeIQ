@@ -2,6 +2,7 @@ package com.dutchman.resumeiq.domain.ai
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.framework.image.MPImage
 import com.google.mediapipe.tasks.genai.llminference.GraphOptions
@@ -9,6 +10,9 @@ import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
@@ -30,6 +34,9 @@ class GemmaInferenceHelper(
     private var llmInference: LlmInference? = null
     private var session: LlmInferenceSession? = null
 
+    private val _isInitialized = MutableStateFlow(false)
+    override val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
+
     override suspend fun initialize(modelPath: String) = withContext(Dispatchers.IO) {
         if (llmInference != null) return@withContext
         val modelFile = File(modelPath)
@@ -39,17 +46,25 @@ class GemmaInferenceHelper(
             "Unsupported model format '${modelFile.extension}'. Expected .task or .litertlm"
         }
 
-        val builder = LlmInference.LlmInferenceOptions.builder()
-            .setModelPath(modelPath)
-            .setMaxTokens(MAX_TOKENS)
-            .setPreferredBackend(LlmInference.Backend.DEFAULT)
-//            .setMaxTopK(64)
+        try {
+            val builder = LlmInference.LlmInferenceOptions.builder()
+                .setModelPath(modelPath)
+                .setMaxTokens(MAX_TOKENS)
+                .setPreferredBackend(LlmInference.Backend.DEFAULT)
+    //            .setMaxTopK(64)
 
-        if (supportsVision) {
-            builder.setMaxNumImages(MAX_NUM_IMAGES)
+            if (supportsVision) {
+                builder.setMaxNumImages(MAX_NUM_IMAGES)
+            }
+
+            llmInference = LlmInference.createFromOptions(context, builder.build())
+            _isInitialized.value = true
+            Log.d("GemmaInferenceHelper", "Gemma MediaPipe engine initialized successfully.")
+        } catch (e: Exception) {
+            _isInitialized.value = false
+            Log.e("GemmaInferenceHelper", "Failed to initialize Gemma MediaPipe engine", e)
+            throw e
         }
-
-        llmInference = LlmInference.createFromOptions(context, builder.build())
     }
 
     override suspend fun generateResponse(
