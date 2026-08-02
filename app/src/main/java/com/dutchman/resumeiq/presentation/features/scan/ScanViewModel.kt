@@ -244,6 +244,7 @@ class ScanViewModel @Inject constructor(
         generateJob?.cancel()
         generateJob = viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
+            kotlinx.coroutines.delay(100) // Yield to UI thread to render the spinner before native execution
 
             try {
                 val file = fileStorage.getDownloadedFile()
@@ -312,6 +313,7 @@ class ScanViewModel @Inject constructor(
         generateJob?.cancel()
         generateJob = viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
+            kotlinx.coroutines.delay(100) // Yield to UI thread to render the spinner before native execution
 
             try {
                 val file = fileStorage.getDownloadedFile()

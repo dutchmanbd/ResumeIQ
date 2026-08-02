@@ -48,11 +48,15 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material.icons.filled.ArrowBack
+import com.dutchman.resumeiq.presentation.activities.MainEvent
+import com.dutchman.resumeiq.presentation.activities.MainViewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
 fun QuestionScreen(
     navigator: DestinationsNavigator,
+    mainViewModel: MainViewModel,
     viewModel: QuestionViewModel = hiltViewModel()
 ) {
     val questions by viewModel.questions.collectAsStateWithLifecycle()
@@ -61,6 +65,14 @@ fun QuestionScreen(
     val interviewer by viewModel.interviewer.collectAsStateWithLifecycle()
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedQuestionIds by remember { mutableStateOf(setOf<Long>()) }
+
+    val isDownloaded by viewModel.isModelDownloaded.collectAsStateWithLifecycle()
+    val isInitialized by viewModel.isModelInitialized.collectAsStateWithLifecycle()
+    val isFabEnabled = !isDownloaded || isInitialized
+
+    LaunchedEffect(key1 = Unit) {
+        viewModel.prepareEngineIfNeeded()
+    }
 
     LaunchedEffect(questions.size) {
         if (questions.isNotEmpty() && listState.firstVisibleItemIndex == 0) {
@@ -234,9 +246,6 @@ fun QuestionScreen(
                     .align(Alignment.BottomEnd)
                     .padding(end = 16.dp, bottom = 16.dp)
             ) {
-                val isDownloaded by viewModel.isModelDownloaded.collectAsStateWithLifecycle()
-                val isInitialized by viewModel.isModelInitialized.collectAsStateWithLifecycle()
-                val isFabEnabled = !isDownloaded || isInitialized
 
                 FloatingActionButton(
                     onClick = { 

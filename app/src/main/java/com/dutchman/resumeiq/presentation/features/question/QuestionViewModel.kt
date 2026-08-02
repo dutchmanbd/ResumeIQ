@@ -18,12 +18,16 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.dutchman.resumeiq.domain.ai.LlmInterface
+import com.dutchman.resumeiq.domain.util.FileStorage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 @HiltViewModel
 class QuestionViewModel @Inject constructor(
     private val questionDao: QuestionDao,
     private val userFactory: UserFactory,
+    private val fileStorage: FileStorage,
     private val llmInterface: LlmInterface
 ) : ViewModel() {
 
@@ -58,6 +62,21 @@ class QuestionViewModel @Inject constructor(
     fun deleteQuestions(ids: List<Long>) {
         viewModelScope.launch {
             questionDao.deleteQuestionsByIds(ids)
+        }
+    }
+
+    fun prepareEngineIfNeeded() {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (llmInterface.isInitialized.value) return@launch
+
+            try {
+                // Delay slightly (e.g., 200ms) to let the initial screen finish drawing
+                delay(200)
+                val file = fileStorage.getDownloadedFile() ?: return@launch
+                llmInterface.initialize(file.absolutePath)
+            } catch (e: Throwable) {
+                Log.e("ResumeIQ", "Failed to initialize LLM", e)
+            }
         }
     }
 }

@@ -10,7 +10,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.CancellationException
 import kotlin.coroutines.resume
@@ -33,49 +36,75 @@ class LiteRtInferenceHelper(
         private const val TAG = "LiteRtInferenceHelper"
     }
 
-    override suspend fun initialize(modelPath: String) = withContext(Dispatchers.IO) {
-        if (engine != null) return@withContext
-        try {
-            val visionBackend = if (supportsVision) Backend.GPU() else null
-            
-            var newEngine: Engine? = null
-            val backendsToTry = if (useGpuForText) {
-                listOf(Backend.GPU(), Backend.CPU())
-            } else {
-                listOf(Backend.CPU(), Backend.GPU())
-            }
-            
-            for (backend in backendsToTry) {
-                try {
-                    val engineConfig = EngineConfig(
-                        modelPath = modelPath,
-                        backend = backend,
-                        visionBackend = visionBackend,
-                        maxNumTokens = 4000,
-                        maxNumImages = 4,
-                        cacheDir = context.getExternalFilesDir(null)?.absolutePath
-                    )
-                    val candidateEngine = Engine(engineConfig)
-                    candidateEngine.initialize()
-                    newEngine = candidateEngine
-                    Log.d(TAG, "Gemma LiteRT engine initialized successfully with backend: $backend")
-                    break
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to initialize engine with backend $backend", e)
-                }
-            }
+    private val initMutex = Mutex()
 
-            if (newEngine == null) {
-                throw IllegalStateException("Failed to initialize engine with any backend")
+    override suspend fun initialize(modelPath: String) = withContext(Dispatchers.IO) {
+        initMutex.withLock {
+            if (engine != null) return@withLock
+
+            try {
+                // Safely fetch path on IO thread
+                val cacheDirectory = context.applicationContext.getExternalFilesDir(null)?.absolutePath
+
+                val visionBackend = if (supportsVision) Backend.GPU() else null
+                var newEngine: Engine? = null
+
+                val backendsToTry = if (useGpuForText) {
+                    listOf(Backend.GPU(), Backend.CPU())
+                } else {
+                    listOf(Backend.CPU(), Backend.GPU())
+                }
+
+                for (backend in backendsToTry) {
+                    var candidateEngine: Engine? = null
+                    try {
+                        val engineConfig = EngineConfig(
+                            modelPath = modelPath,
+                            backend = backend,
+                            visionBackend = visionBackend,
+                            maxNumTokens = 4000,
+                            maxNumImages = 4,
+                            cacheDir = cacheDirectory
+                        )
+
+                        candidateEngine = setupEngine(engineConfig)
+                        newEngine = candidateEngine
+                        Log.d(TAG, "LiteRT engine initialized with backend: $backend")
+                        break
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Backend $backend failed, cleaning native state...", e)
+                        runCatching { candidateEngine?.close() }
+                    }
+                }
+
+                val finalEngine = newEngine ?: throw IllegalStateException("Failed to initialize engine")
+                engine = finalEngine
+
+                // Allow the GPU driver lock to clear before triggering UI recomposition
+                yield()
+
+                // Safely post state update on the Main thread to eliminate frame dropping
+                withContext(Dispatchers.Main.immediate) {
+                    _isInitialized.value = true
+                }
+
+                Log.d(TAG, "Gemma LiteRT engine initialization complete.")
+
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main.immediate) {
+                    _isInitialized.value = false
+                }
+                Log.e(TAG, "Failed to initialize Gemma LiteRT engine", e)
+                throw e
             }
-            
-            engine = newEngine
-            _isInitialized.value = true
-            Log.d(TAG, "Gemma LiteRT engine initialized successfully.")
-        } catch (e: Exception) {
-            _isInitialized.value = false
-            Log.e(TAG, "Failed to initialize Gemma LiteRT engine", e)
-            throw e
+        }
+    }
+    private suspend fun setupEngine(engineConfig: EngineConfig): Engine {
+        return withContext(Dispatchers.IO) {
+            val candidateEngine = Engine(engineConfig)
+            // This now executes safely on an I/O thread pool
+            candidateEngine.initialize()
+            candidateEngine
         }
     }
 
@@ -84,10 +113,10 @@ class LiteRtInferenceHelper(
         images: List<Bitmap>
     ): String = withContext(Dispatchers.IO) {
         val currentEngine = engine ?: throw IllegalStateException("Model not initialized")
-        
+
         // Ensure conversation is closed and recreated if it exists
         conversation?.close()
-        
+
         val currentConversation = currentEngine.createConversation(
             ConversationConfig(
                 samplerConfig = SamplerConfig(
@@ -103,7 +132,7 @@ class LiteRtInferenceHelper(
 
         // For multimodal models, pass images first (up to maxNumImages=4)
         images.take(4).forEach { bitmap ->
-            contents.add(Content.ImageBytes(bitmap.toPngByteArray()))
+            contents.add(Content.ImageBytes(bitmap.toJpegByteArray()))
         }
 
         // Then add the text prompt
@@ -111,8 +140,11 @@ class LiteRtInferenceHelper(
             contents.add(Content.Text(prompt))
         }
 
-        val responseMessage = currentConversation.sendMessage(Contents.of(contents))
-        responseMessage.toString()
+        val response = java.lang.StringBuilder()
+        currentConversation.sendMessageAsync(Contents.of(contents)).collect { message ->
+            response.append(message.toString())
+        }
+        response.toString()
     }
 
     override fun generateResponseStreaming(
@@ -120,7 +152,7 @@ class LiteRtInferenceHelper(
         images: List<Bitmap>
     ): Flow<String> = kotlinx.coroutines.flow.flow {
         val currentEngine = engine ?: error("Model not initialized")
-        
+
         conversation?.close()
         val currentConversation = currentEngine.createConversation(
             ConversationConfig(
@@ -132,17 +164,17 @@ class LiteRtInferenceHelper(
             )
         )
         conversation = currentConversation
-        
+
         val contents = mutableListOf<Content>()
 
         images.take(4).forEach { bitmap ->
-            contents.add(Content.ImageBytes(bitmap.toPngByteArray()))
+            contents.add(Content.ImageBytes(bitmap.toJpegByteArray()))
         }
 
         if (prompt.isNotBlank()) {
             contents.add(Content.Text(prompt))
         }
-        
+
         currentConversation.sendMessageAsync(Contents.of(contents)).collect { message ->
             emit(message.toString())
         }
@@ -174,16 +206,16 @@ class LiteRtInferenceHelper(
         }
     }
 
-    private fun Bitmap.toPngByteArray(): ByteArray {
+    private fun Bitmap.toJpegByteArray(): ByteArray {
         val stream = ByteArrayOutputStream()
         val resizedBitmap = this.resize(1024)
-        resizedBitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
         if (resizedBitmap != this) {
             resizedBitmap.recycle()
         }
         return stream.toByteArray()
     }
-    
+
     private fun Bitmap.resize(maxSize: Int): Bitmap {
         val originalWidth = this.width
         val originalHeight = this.height

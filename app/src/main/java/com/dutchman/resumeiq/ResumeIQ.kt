@@ -29,16 +29,16 @@ class ResumeIQ : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        CoroutineScope(Dispatchers.IO).launch {
-            val file = fileStorage.getDownloadedFile()
-            if (file != null) {
-                try {
-                    llmInterface.initialize(file.absolutePath)
-                } catch (e: Throwable) {
-                    android.util.Log.e("ResumeIQ", "Failed to initialize LLM", e)
-                }
-            }
-        }
+//        CoroutineScope(Dispatchers.IO).launch {
+//            val file = fileStorage.getDownloadedFile()
+//            if (file != null) {
+//                try {
+//                    llmInterface.initialize(file.absolutePath)
+//                } catch (e: Throwable) {
+//                    android.util.Log.e("ResumeIQ", "Failed to initialize LLM", e)
+//                }
+//            }
+//        }
     }
 
     override val workManagerConfiguration: Configuration

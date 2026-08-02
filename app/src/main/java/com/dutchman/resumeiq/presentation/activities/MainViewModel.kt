@@ -19,6 +19,9 @@ import androidx.core.content.FileProvider
 import android.os.Environment
 import android.widget.Toast
 import android.content.Intent
+import android.util.Log
+import com.dutchman.resumeiq.domain.ai.LlmInterface
+import kotlinx.coroutines.delay
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -168,6 +171,10 @@ class MainViewModel @Inject constructor(
                     }
                 }
             }
+
+
         }
     }
+
+
 }
