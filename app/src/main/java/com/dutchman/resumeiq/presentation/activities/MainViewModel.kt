@@ -32,8 +32,11 @@ class MainViewModel @Inject constructor(
     private val userFactory: UserFactory,
     private val fileStorage: FileStorage,
     private val firebaseAuthHelper: FirebaseAuthHelper,
-    private val appDatabase: AppDatabase
+    private val appDatabase: AppDatabase,
+    private val llmInterface: LlmInterface
 ) : ViewModel() {
+
+    val isModelInitialized: StateFlow<Boolean> = llmInterface.isInitialized
 
     private val _uiState = MutableStateFlow(MainUiState(
         isModelDownloaded = userFactory.isModelDownloaded,
@@ -55,6 +58,18 @@ class MainViewModel @Inject constructor(
                     state.copy(
                         isModelDownloaded = true
                     )
+                }
+            }
+
+            MainEvent.InitializeModel -> {
+                viewModelScope.launch {
+                    if (llmInterface.isInitialized.value) return@launch
+                    try {
+                        val file = withContext(Dispatchers.IO) { fileStorage.getDownloadedFile() } ?: return@launch
+                        llmInterface.initialize(file.absolutePath)
+                    } catch (e: Throwable) {
+                        Log.e("MainViewModel", "Failed to initialize LLM", e)
+                    }
                 }
             }
 

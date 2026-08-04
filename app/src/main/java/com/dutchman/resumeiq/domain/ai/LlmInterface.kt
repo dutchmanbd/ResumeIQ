@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface LlmInterface {
     val isInitialized: StateFlow<Boolean>
-    fun initialize(modelPath: String)
+    suspend fun initialize(modelPath: String)
     suspend fun generateResponse(prompt: String, images: List<Bitmap> = emptyList()): String
     fun generateResponseStreaming(prompt: String, images: List<Bitmap> = emptyList()): Flow<String>
     fun closeSession()

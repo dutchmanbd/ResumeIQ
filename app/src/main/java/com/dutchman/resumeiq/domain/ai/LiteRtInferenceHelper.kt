@@ -4,7 +4,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import com.google.ai.edge.litertlm.*
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,30 +36,38 @@ class LiteRtInferenceHelper(
         private const val INIT_TIMEOUT_MS = 180_000L
 
         /**
-         * Single-thread executor dedicated to model operations.
-         * Using a single thread avoids GPU resource contention and keeps
-         * model work completely off the Dispatchers.IO pool.
+         * A dedicated single-thread [CoroutineDispatcher] for all model operations.
+         *
+         * Unlike [kotlinx.coroutines.Dispatchers.IO] (a shared pool), this dispatcher
+         * is fully isolated — blocking native JNI calls like [Engine.initialize] will
+         * never starve other IO work or cause indirect main-thread contention.
+         *
+         * A single thread also prevents GPU resource contention from concurrent
+         * model operations.
          */
-        private val modelExecutor = Executors.newSingleThreadExecutor { runnable ->
-            Thread(runnable, "llm-model-thread").apply {
-                isDaemon = true
-                priority = Thread.MIN_PRIORITY
-            }
-        }
+        private val modelDispatcher: CoroutineDispatcher =
+            Executors.newSingleThreadExecutor { runnable ->
+                Thread(runnable, "litert-model-thread").apply {
+                    isDaemon = true
+                    priority = Thread.MIN_PRIORITY
+                }
+            }.asCoroutineDispatcher()
     }
 
     @Volatile
     private var isInitializing = false
 
-    override fun initialize(modelPath: String) {
+    override suspend fun initialize(modelPath: String) {
         if (engine != null || isInitializing) return
         isInitializing = true
 
-        modelExecutor.execute {
+        withContext(modelDispatcher) {
             Log.e(TAG, "initialize: execute")
             // Lowest possible OS-level scheduling priority
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_LOWEST)
             try {
+                ensureActive() // Check for cancellation before heavy work
+
                 val cacheDirectory =
                     context.applicationContext.getExternalFilesDir(null)?.absolutePath
 
@@ -72,6 +82,8 @@ class LiteRtInferenceHelper(
 
                 var newEngine: Engine? = null
                 for (backend in backendsToTry) {
+                    ensureActive() // Check for cancellation between backend attempts
+
                     var candidateEngine: Engine? = null
                     try {
                         val engineConfig = EngineConfig(
@@ -122,7 +134,7 @@ class LiteRtInferenceHelper(
     override suspend fun generateResponse(
         prompt: String,
         images: List<Bitmap>
-    ): String = withContext(Dispatchers.IO) {
+    ): String = withContext(modelDispatcher) {
         val currentEngine = awaitEngine()
 
         conversation?.close()
@@ -181,7 +193,7 @@ class LiteRtInferenceHelper(
         currentConversation.sendMessageAsync(Contents.of(contents)).collect { message ->
             emit(message.toString())
         }
-    }.flowOn(Dispatchers.IO)
+    }.flowOn(modelDispatcher)
 
     override fun closeSession() {
         try {

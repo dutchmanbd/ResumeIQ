@@ -8,8 +8,10 @@ import com.google.mediapipe.framework.image.MPImage
 import com.google.mediapipe.tasks.genai.llminference.GraphOptions
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,6 +23,7 @@ import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
+import java.util.concurrent.Executors
 
 class GemmaInferenceHelper(
     private val context: Context,
@@ -45,30 +48,47 @@ class GemmaInferenceHelper(
         private const val MAX_NUM_IMAGES = 4
         // Maximum time (ms) to wait for model loading before giving up
         private const val INIT_TIMEOUT_MS = 180_000L
+
+        /**
+         * A dedicated single-thread [CoroutineDispatcher] for all model operations.
+         *
+         * Unlike [kotlinx.coroutines.Dispatchers.IO] (a shared pool), this dispatcher
+         * is fully isolated — blocking native JNI calls like
+         * [LlmInference.createFromOptions] will never starve other IO work or cause
+         * indirect main-thread contention.
+         */
+        private val modelDispatcher: CoroutineDispatcher =
+            Executors.newSingleThreadExecutor { runnable ->
+                Thread(runnable, "gemma-model-thread").apply {
+                    isDaemon = true
+                    priority = Thread.MIN_PRIORITY
+                }
+            }.asCoroutineDispatcher()
     }
 
     @Volatile private var isInitializing = false
 
     /**
-     * Kicks off model initialization on a dedicated background Thread and returns
-     * immediately — never blocks the calling thread or any coroutine dispatcher.
+     * Suspends the calling coroutine while model initialization runs on a
+     * dedicated [modelDispatcher] — never blocks the main thread or the
+     * shared [kotlinx.coroutines.Dispatchers.IO] pool.
      *
      * Completion is signalled via [isInitialized]. The generate methods internally
      * await this flag, so callers just need to invoke [initialize] then call a
      * generate method.
      */
-    override fun initialize(modelPath: String) {
+    override suspend fun initialize(modelPath: String) {
         if (llmInference != null || isInitializing) return
         isInitializing = true
 
-        Thread({
+        withContext(modelDispatcher) {
             // Lower this thread's OS-level priority so the Android scheduler
             // always favours the UI/render thread during model loading.
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
-            // Give the UI one frame to settle before starting heavy native work.
-            Thread.sleep(16)
             val modelFile = File(modelPath)
             try {
+                ensureActive() // Check for cancellation before heavy work
+
                 require(modelFile.exists()) { "Model file does not exist: $modelPath" }
                 require(modelFile.length() >= 1024L * 1024L) { "Model file is too small or invalid." }
                 require(
@@ -97,7 +117,7 @@ class GemmaInferenceHelper(
             } finally {
                 isInitializing = false
             }
-        }, "gemma-init-thread").start()
+        }
     }
 
     /**
@@ -115,7 +135,7 @@ class GemmaInferenceHelper(
     override suspend fun generateResponse(
         prompt: String,
         images: List<Bitmap>
-    ): String = withContext(Dispatchers.IO) {
+    ): String = withContext(modelDispatcher) {
         val inference = awaitInference()
 
         if (images.isNotEmpty() && !supportsVision) {
@@ -229,7 +249,7 @@ class GemmaInferenceHelper(
             }
             disposeInferenceSession(currentSession)
         }
-    }.flowOn(Dispatchers.IO)
+    }.flowOn(modelDispatcher)
 
     /**
      * Stops an in-flight [generateResponseAsync] stream; [close] alone does not cancel generation.

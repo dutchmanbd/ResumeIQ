@@ -73,6 +73,7 @@ fun ModelDownloadScreen(
     LaunchedEffect(state.status) {
         if (state.status == DownloadStatus.SUCCESS) {
             viewModel.onEvent(MainEvent.RefreshModel)
+            viewModel.onEvent(MainEvent.InitializeModel)
             if(!showBackButton){
                 navigator.navigate(QuestionScreenDestination) {
                     popUpTo(ModelDownloadScreenDestination) {

@@ -67,11 +67,11 @@ fun QuestionScreen(
     var selectedQuestionIds by remember { mutableStateOf(setOf<Long>()) }
 
     val isDownloaded by viewModel.isModelDownloaded.collectAsStateWithLifecycle()
-    val isInitialized by viewModel.isModelInitialized.collectAsStateWithLifecycle()
+    val isInitialized by mainViewModel.isModelInitialized.collectAsStateWithLifecycle()
     val isFabEnabled = !isDownloaded || isInitialized
 
     LaunchedEffect(key1 = Unit) {
-        viewModel.prepareEngineIfNeeded()
+        mainViewModel.onEvent(MainEvent.InitializeModel)
     }
 
     LaunchedEffect(questions.size) {

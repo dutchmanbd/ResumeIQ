@@ -16,7 +16,6 @@ import com.dutchman.resumeiq.data.local.entity.toDomain
 import com.dutchman.resumeiq.domain.ai.LlmInterface
 import com.dutchman.resumeiq.domain.models.Question
 import com.dutchman.resumeiq.domain.util.ExternalAppManager
-import com.dutchman.resumeiq.domain.util.FileStorage
 import com.dutchman.resumeiq.domain.util.TranslatorManager
 import com.dutchman.resumeiq.domain.util.UserFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,7 +41,6 @@ class QuestionDetailViewModel @Inject constructor(
     private val translatorManager: TranslatorManager,
     private val externalAppManager: ExternalAppManager,
     private val clipboardManager: ClipboardManager,
-    private val fileStorage: FileStorage,
     private val userFactory: UserFactory
 ) : AndroidViewModel(application) {
 
@@ -147,13 +145,6 @@ class QuestionDetailViewModel @Inject constructor(
             _generatedAnswer.value = ""
 
             try {
-                val file = withContext(Dispatchers.IO) { fileStorage.getDownloadedFile() }
-                if (file != null) {
-                    llmInterface.initialize(file.absolutePath)
-                } else {
-                    _isGenerating.value = false
-                    return@launch
-                }
 
                 val prompt = """
                     You are a highly qualified job candidate interviewing for a position relevant to this resume. Provide a tailored, real-world answer with realistic example.

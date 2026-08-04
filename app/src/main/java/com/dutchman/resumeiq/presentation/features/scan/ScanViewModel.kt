@@ -22,7 +22,6 @@ import com.google.mlkit.vision.documentscanner.GmsDocumentScanner
 import com.dutchman.resumeiq.domain.ai.LlmInterface
 import com.dutchman.resumeiq.domain.models.Interviewer
 import com.dutchman.resumeiq.domain.models.Question
-import com.dutchman.resumeiq.domain.util.FileStorage
 import com.dutchman.resumeiq.domain.util.UserFactory
 import com.dutchman.resumeiq.domain.speech.LiveSpeechRecognizer
 import com.dutchman.resumeiq.domain.speech.SpeechEvent
@@ -37,7 +36,6 @@ import kotlinx.coroutines.Job
 @HiltViewModel
 class ScanViewModel @Inject constructor(
     private val llmInterface: LlmInterface,
-    private val fileStorage: FileStorage,
     private val questionDao: QuestionDao,
     private val userFactory: UserFactory,
     private val liveSpeechRecognizer: LiveSpeechRecognizer,
@@ -246,13 +244,6 @@ class ScanViewModel @Inject constructor(
             _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
 
             try {
-                val file = withContext(Dispatchers.IO) { fileStorage.getDownloadedFile() }
-                if (file != null) {
-                    llmInterface.initialize(file.absolutePath)
-                } else {
-                    _uiState.update { it.copy(isGenerating = false) }
-                    return@launch
-                }
 
                 val message = """
                     You are an expert technical interviewer and recruiter analyzing the attached resume image.
@@ -314,15 +305,27 @@ class ScanViewModel @Inject constructor(
             _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
 
             try {
-                val file = withContext(Dispatchers.IO) { fileStorage.getDownloadedFile() }
-                if (file != null) {
-                    llmInterface.initialize(file.absolutePath)
-                } else {
-                    _uiState.update { it.copy(isGenerating = false) }
-                    return@launch
-                }
 
-                val message = "Generate interview questions from above images and return json text"
+                val message = """
+                    You are an expert technical interviewer and recruiter analyzing the attached resume image.
+                    TASK:
+                    Generate a highly professional, real-world interview question bank based ONLY resume image.
+
+                    QUESTION STYLE:
+                    Create realistic, scenario-based, and technical questions tailored to their specific industry and seniority. Questions should be concise (1-2 sentences maximum) but challenging, reflecting actual interviews for their target role.
+
+                    JSON OUTPUT FORMAT:
+                    Output EXCLUSIVELY a raw JSON object. Do not include markdown tags like ```json, do not write code blocks, and do not write closing/opening chat greetings. Use this exact compact schema:
+
+                    [{"c": "Skill | Lead | Behav", "l": "Basic | Adv", "q": "The professional interview question."}]
+                    
+                    FIELD DESCRIPTIONS:
+                    - c (Category): Must be exactly one of: "Skill" (Technical/Core Skills), "Lead" (Leadership/Mentoring), "Behav" (Behavioral/Scenario).
+                    - l (Level): Must be exactly one of: "Basic" or "Adv".
+                    - q (Question): The actual question text.
+                """.trimIndent()
+
+//                val message = "Generate interview questions from above images and return json"
                 var bufferedText = ""
                 var lastUpdateTime = System.currentTimeMillis()
 

@@ -22,9 +22,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.dutchman.resumeiq.domain.ai.LlmInterface
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 data class DownloadState(
     val progress: Int = 0,
@@ -47,7 +44,6 @@ enum class DownloadStatus {
 class ModelDownloadViewModel @Inject constructor(
     application: Application,
     private val userFactory: UserFactory,
-    private val llmInterface: LlmInterface,
     private val fileStorage: FileStorage
 ) : AndroidViewModel(application) {
 
@@ -158,16 +154,6 @@ class ModelDownloadViewModel @Inject constructor(
                                 estimatedTimeRemaining = "",
                                 isModelDownloaded = true
                             )
-                            val file = fileStorage.getDownloadedFile()
-                            if (file != null) {
-                                viewModelScope.launch {
-                                    try {
-                                        llmInterface.initialize(file.absolutePath)
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                    }
-                                }
-                            }
                         }
                         WorkInfo.State.FAILED -> {
                             userFactory.saveIsModelDownloaded(false)
