@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.dutchman.resumeiq.domain.ai.LlmInterface
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class DownloadState(
     val progress: Int = 0,

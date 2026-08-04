@@ -242,12 +242,11 @@ class ScanViewModel @Inject constructor(
 
     private fun generateQuestions() {
         generateJob?.cancel()
-        generateJob = viewModelScope.launch(Dispatchers.IO) {
+        generateJob = viewModelScope.launch {
             _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
-            kotlinx.coroutines.delay(100) // Yield to UI thread to render the spinner before native execution
 
             try {
-                val file = fileStorage.getDownloadedFile()
+                val file = withContext(Dispatchers.IO) { fileStorage.getDownloadedFile() }
                 if (file != null) {
                     llmInterface.initialize(file.absolutePath)
                 } else {
@@ -311,47 +310,17 @@ class ScanViewModel @Inject constructor(
 
     private fun generateQuestions(images: List<Bitmap>) {
         generateJob?.cancel()
-        generateJob = viewModelScope.launch(Dispatchers.IO) {
+        generateJob = viewModelScope.launch {
             _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
-            kotlinx.coroutines.delay(100) // Yield to UI thread to render the spinner before native execution
 
             try {
-                val file = fileStorage.getDownloadedFile()
+                val file = withContext(Dispatchers.IO) { fileStorage.getDownloadedFile() }
                 if (file != null) {
                     llmInterface.initialize(file.absolutePath)
                 } else {
                     _uiState.update { it.copy(isGenerating = false) }
                     return@launch
                 }
-
-
-//                val message = """
-//                    You are an expert technical interviewer and recruiter analyzing the attached resume image.
-//
-//                    TASK:
-//                    Generate a highly professional, real-world interview question bank based ONLY on the candidate's experience, role, and skills shown in the resume.
-//
-//                    QUESTION STYLE:
-//                    Create realistic, scenario-based, and technical questions tailored to their specific industry and seniority. Questions MUST be extremely concise (1 short sentence maximum) to ensure fast generation.
-//
-//                    JSON OUTPUT FORMAT:
-//                    Output EXCLUSIVELY a raw JSON object. Do not include markdown tags like ```json, do not write code blocks, and do not write closing/opening chat greetings. Use this exact compact schema:
-//
-//                    {"questions": [{"c": "Skill | Lead | Behav", "l": "Basic | Adv", "q": "The professional interview question."}], "info":{ "name":"XXX", "designation":"XXXX", "mobile":"XXX"}}
-//
-//                    FIELD DESCRIPTIONS:
-//                    - questions: The array containing the generated questions.
-//                    - c (Category): Must be exactly one of: "Skill", "Lead", "Behav".
-//                    - l (Level): Must be exactly one of: "Basic" or "Adv".
-//                    - q (Question): The actual question text.
-//
-//                    GENERATION REQUIREMENTS:
-//                    1. Generate exactly 3 "Skill" questions.
-//                    2. Generate exactly 3 "Lead" questions.
-//                    3. Generate exactly 3 "Behav" questions.
-//                    Ensure exactly 9 questions are output in the "questions" array. DO NOT generate more than 9 questions. Keep responses brief to optimize generation time.
-//                """.trimIndent()
-
 
                 val message = "Generate interview questions from above images and return json text"
                 var bufferedText = ""

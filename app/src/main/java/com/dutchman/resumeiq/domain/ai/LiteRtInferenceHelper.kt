@@ -9,16 +9,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.yield
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.ByteArrayOutputStream
-import java.util.concurrent.CancellationException
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
+import java.util.concurrent.Executors
 
 class LiteRtInferenceHelper(
     private val context: Context,
@@ -26,6 +22,7 @@ class LiteRtInferenceHelper(
     private val supportsVision: Boolean = false
 ) : LlmInterface {
 
+    @Volatile
     private var engine: Engine? = null
     private var conversation: Conversation? = null
 
@@ -34,20 +31,38 @@ class LiteRtInferenceHelper(
 
     companion object {
         private const val TAG = "LiteRtInferenceHelper"
+        private const val INIT_TIMEOUT_MS = 180_000L
+
+        /**
+         * Single-thread executor dedicated to model operations.
+         * Using a single thread avoids GPU resource contention and keeps
+         * model work completely off the Dispatchers.IO pool.
+         */
+        private val modelExecutor = Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "llm-model-thread").apply {
+                isDaemon = true
+                priority = Thread.MIN_PRIORITY
+            }
+        }
     }
 
-    private val initMutex = Mutex()
+    @Volatile
+    private var isInitializing = false
 
-    override suspend fun initialize(modelPath: String) = withContext(Dispatchers.IO) {
-        initMutex.withLock {
-            if (engine != null) return@withLock
+    override fun initialize(modelPath: String) {
+        if (engine != null || isInitializing) return
+        isInitializing = true
 
+        modelExecutor.execute {
+            Log.e(TAG, "initialize: execute")
+            // Lowest possible OS-level scheduling priority
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_LOWEST)
             try {
-                // Safely fetch path on IO thread
-                val cacheDirectory = context.applicationContext.getExternalFilesDir(null)?.absolutePath
+                val cacheDirectory =
+                    context.applicationContext.getExternalFilesDir(null)?.absolutePath
 
+                Log.e(TAG, "initialize: cache: $cacheDirectory")
                 val visionBackend = if (supportsVision) Backend.GPU() else null
-                var newEngine: Engine? = null
 
                 val backendsToTry = if (useGpuForText) {
                     listOf(Backend.GPU(), Backend.CPU())
@@ -55,6 +70,7 @@ class LiteRtInferenceHelper(
                     listOf(Backend.CPU(), Backend.GPU())
                 }
 
+                var newEngine: Engine? = null
                 for (backend in backendsToTry) {
                     var candidateEngine: Engine? = null
                     try {
@@ -66,57 +82,50 @@ class LiteRtInferenceHelper(
                             maxNumImages = 4,
                             cacheDir = cacheDirectory
                         )
-
-                        candidateEngine = setupEngine(engineConfig)
+                        candidateEngine = Engine(engineConfig)
+                        Log.e(TAG, "initialize: before call init")
+                        candidateEngine.initialize()
                         newEngine = candidateEngine
-                        Log.d(TAG, "LiteRT engine initialized with backend: $backend")
+                        Log.d(TAG, "LiteRT engine initialized with backend: ${backend.name}")
                         break
                     } catch (e: Exception) {
-                        Log.w(TAG, "Backend $backend failed, cleaning native state...", e)
+                        Log.w(TAG, "Backend $backend failed", e)
                         runCatching { candidateEngine?.close() }
                     }
                 }
 
-                val finalEngine = newEngine ?: throw IllegalStateException("Failed to initialize engine")
-                engine = finalEngine
-
-                // Allow the GPU driver lock to clear before triggering UI recomposition
-                yield()
-
-                // Safely post state update on the Main thread to eliminate frame dropping
-                withContext(Dispatchers.Main.immediate) {
+                if (newEngine != null) {
+                    engine = newEngine
                     _isInitialized.value = true
-                }
-
-                Log.d(TAG, "Gemma LiteRT engine initialization complete.")
-
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main.immediate) {
+                    Log.d(TAG, "LiteRT engine initialization complete.")
+                } else {
+                    Log.e(TAG, "All backends failed to initialize engine.")
                     _isInitialized.value = false
                 }
-                Log.e(TAG, "Failed to initialize Gemma LiteRT engine", e)
-                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize LiteRT engine", e)
+                _isInitialized.value = false
+            } finally {
+                isInitializing = false
             }
         }
     }
-    private suspend fun setupEngine(engineConfig: EngineConfig): Engine {
-        return withContext(Dispatchers.IO) {
-            val candidateEngine = Engine(engineConfig)
-            // This now executes safely on an I/O thread pool
-            candidateEngine.initialize()
-            candidateEngine
+
+    private suspend fun awaitEngine(): Engine {
+        if (!_isInitialized.value) {
+            withTimeoutOrNull(INIT_TIMEOUT_MS) { _isInitialized.first { it } }
+                ?: throw IllegalStateException("Model initialization timed out or failed")
         }
+        return engine ?: throw IllegalStateException("Model not initialized")
     }
 
     override suspend fun generateResponse(
         prompt: String,
         images: List<Bitmap>
     ): String = withContext(Dispatchers.IO) {
-        val currentEngine = engine ?: throw IllegalStateException("Model not initialized")
+        val currentEngine = awaitEngine()
 
-        // Ensure conversation is closed and recreated if it exists
         conversation?.close()
-
         val currentConversation = currentEngine.createConversation(
             ConversationConfig(
                 samplerConfig = SamplerConfig(
@@ -129,13 +138,9 @@ class LiteRtInferenceHelper(
         conversation = currentConversation
 
         val contents = mutableListOf<Content>()
-
-        // For multimodal models, pass images first (up to maxNumImages=4)
         images.take(4).forEach { bitmap ->
             contents.add(Content.ImageBytes(bitmap.toJpegByteArray()))
         }
-
-        // Then add the text prompt
         if (prompt.isNotBlank()) {
             contents.add(Content.Text(prompt))
         }
@@ -151,7 +156,7 @@ class LiteRtInferenceHelper(
         prompt: String,
         images: List<Bitmap>
     ): Flow<String> = kotlinx.coroutines.flow.flow {
-        val currentEngine = engine ?: error("Model not initialized")
+        val currentEngine = awaitEngine()
 
         conversation?.close()
         val currentConversation = currentEngine.createConversation(
@@ -166,11 +171,9 @@ class LiteRtInferenceHelper(
         conversation = currentConversation
 
         val contents = mutableListOf<Content>()
-
         images.take(4).forEach { bitmap ->
             contents.add(Content.ImageBytes(bitmap.toJpegByteArray()))
         }
-
         if (prompt.isNotBlank()) {
             contents.add(Content.Text(prompt))
         }
@@ -183,9 +186,7 @@ class LiteRtInferenceHelper(
     override fun closeSession() {
         try {
             conversation?.cancelProcess()
-        } catch (e: Exception) {
-            // ignore
-        }
+        } catch (_: Exception) {}
         try {
             conversation?.close()
         } catch (e: Exception) {
@@ -203,6 +204,8 @@ class LiteRtInferenceHelper(
             Log.e(TAG, "Error closing engine", e)
         } finally {
             engine = null
+            _isInitialized.value = false
+            isInitializing = false
         }
     }
 

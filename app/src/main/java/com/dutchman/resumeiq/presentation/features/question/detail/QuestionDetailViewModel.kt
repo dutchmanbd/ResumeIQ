@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -141,12 +142,12 @@ class QuestionDetailViewModel @Inject constructor(
     private fun generateAiAnswer() {
         val currentQuestion = state.value.question ?: return
 
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _isGenerating.value = true
             _generatedAnswer.value = ""
 
             try {
-                val file = fileStorage.getDownloadedFile()
+                val file = withContext(Dispatchers.IO) { fileStorage.getDownloadedFile() }
                 if (file != null) {
                     llmInterface.initialize(file.absolutePath)
                 } else {
@@ -177,7 +178,7 @@ class QuestionDetailViewModel @Inject constructor(
                         difficulty = currentQuestion.difficulty,
                         category = currentQuestion.category
                     )
-                    questionDao.updateQuestion(updatedEntity)
+                    withContext(Dispatchers.IO) { questionDao.updateQuestion(updatedEntity) }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

@@ -15,9 +15,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
 class GemmaInferenceHelper(
@@ -37,47 +39,89 @@ class GemmaInferenceHelper(
     private val _isInitialized = MutableStateFlow(false)
     override val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
 
-    override suspend fun initialize(modelPath: String) = withContext(Dispatchers.IO) {
-        if (llmInference != null) return@withContext
-        val modelFile = File(modelPath)
-        require(modelFile.exists()) { "Model file does not exist: $modelPath" }
-        require(modelFile.length() >= 1024L * 1024L) { "Model file is too small or invalid." }
-        require(modelFile.extension.equals("task", ignoreCase = true) || modelFile.extension.equals("litertlm", ignoreCase = true)) {
-            "Unsupported model format '${modelFile.extension}'. Expected .task or .litertlm"
-        }
+    companion object {
+        private const val TAG = "GemmaInferenceHelper"
+        private const val MAX_TOKENS = 32000
+        private const val MAX_NUM_IMAGES = 4
+        // Maximum time (ms) to wait for model loading before giving up
+        private const val INIT_TIMEOUT_MS = 180_000L
+    }
 
-        try {
-            val builder = LlmInference.LlmInferenceOptions.builder()
-                .setModelPath(modelPath)
-                .setMaxTokens(MAX_TOKENS)
-                .setPreferredBackend(LlmInference.Backend.DEFAULT)
-    //            .setMaxTopK(64)
+    @Volatile private var isInitializing = false
 
-            if (supportsVision) {
-                builder.setMaxNumImages(MAX_NUM_IMAGES)
+    /**
+     * Kicks off model initialization on a dedicated background Thread and returns
+     * immediately — never blocks the calling thread or any coroutine dispatcher.
+     *
+     * Completion is signalled via [isInitialized]. The generate methods internally
+     * await this flag, so callers just need to invoke [initialize] then call a
+     * generate method.
+     */
+    override fun initialize(modelPath: String) {
+        if (llmInference != null || isInitializing) return
+        isInitializing = true
+
+        Thread({
+            // Lower this thread's OS-level priority so the Android scheduler
+            // always favours the UI/render thread during model loading.
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+            // Give the UI one frame to settle before starting heavy native work.
+            Thread.sleep(16)
+            val modelFile = File(modelPath)
+            try {
+                require(modelFile.exists()) { "Model file does not exist: $modelPath" }
+                require(modelFile.length() >= 1024L * 1024L) { "Model file is too small or invalid." }
+                require(
+                    modelFile.extension.equals("task", ignoreCase = true) ||
+                        modelFile.extension.equals("litertlm", ignoreCase = true)
+                ) {
+                    "Unsupported model format '${modelFile.extension}'. Expected .task or .litertlm"
+                }
+
+                val builder = LlmInference.LlmInferenceOptions.builder()
+                    .setModelPath(modelPath)
+                    .setMaxTokens(MAX_TOKENS)
+                    .setPreferredBackend(LlmInference.Backend.DEFAULT)
+                //  .setMaxTopK(64)
+
+                if (supportsVision) {
+                    builder.setMaxNumImages(MAX_NUM_IMAGES)
+                }
+
+                llmInference = LlmInference.createFromOptions(context, builder.build())
+                _isInitialized.value = true
+                Log.d(TAG, "Gemma MediaPipe engine initialized successfully.")
+            } catch (e: Exception) {
+                _isInitialized.value = false
+                Log.e(TAG, "Failed to initialize Gemma MediaPipe engine", e)
+            } finally {
+                isInitializing = false
             }
+        }, "gemma-init-thread").start()
+    }
 
-            llmInference = LlmInference.createFromOptions(context, builder.build())
-            _isInitialized.value = true
-            Log.d("GemmaInferenceHelper", "Gemma MediaPipe engine initialized successfully.")
-        } catch (e: Exception) {
-            _isInitialized.value = false
-            Log.e("GemmaInferenceHelper", "Failed to initialize Gemma MediaPipe engine", e)
-            throw e
+    /**
+     * Suspends (without blocking any thread) until [isInitialized] is true, then
+     * returns the engine. Throws if initialization timed out or failed.
+     */
+    private suspend fun awaitInference(): LlmInference {
+        if (!_isInitialized.value) {
+            withTimeoutOrNull(INIT_TIMEOUT_MS) { _isInitialized.first { it } }
+                ?: throw IllegalStateException("Model initialization timed out or failed")
         }
+        return llmInference ?: throw IllegalStateException("Model not initialized")
     }
 
     override suspend fun generateResponse(
         prompt: String,
         images: List<Bitmap>
     ): String = withContext(Dispatchers.IO) {
-        val inference = llmInference
-        if (inference == null) {
-            throw IllegalStateException("Model not initialized")
-        }
+        val inference = awaitInference()
 
         if (images.isNotEmpty() && !supportsVision) {
-            throw IllegalStateException("This model does not support image input. Re-initialize with supportsVision=true and a vision-capable .task model.")
+            throw IllegalStateException(
+                "This model does not support image input. Re-initialize with supportsVision=true and a vision-capable .task model."
+            )
         }
 
         val currentSession = try {
@@ -104,9 +148,9 @@ class GemmaInferenceHelper(
             }
 
             currentSession.addQueryChunk(prompt)
-            
+
             val builder = StringBuilder()
-            val future = currentSession.generateResponseAsync { partialResult, done ->
+            val future = currentSession.generateResponseAsync { partialResult, _ ->
                 builder.append(partialResult)
             }
 
@@ -127,14 +171,20 @@ class GemmaInferenceHelper(
         prompt: String,
         images: List<Bitmap>
     ): Flow<String> = callbackFlow {
-        val inference = llmInference
-        if (inference == null) {
-            close(IllegalStateException("Model not initialized"))
+        // Suspend here (non-blocking) until the background init thread completes
+        val inference = try {
+            awaitInference()
+        } catch (e: Exception) {
+            close(e)
             return@callbackFlow
         }
 
         if (images.isNotEmpty() && !supportsVision) {
-            close(IllegalStateException("This model does not support image input. Re-initialize with supportsVision=true and a vision-capable .task model."))
+            close(
+                IllegalStateException(
+                    "This model does not support image input. Re-initialize with supportsVision=true and a vision-capable .task model."
+                )
+            )
             return@callbackFlow
         }
 
@@ -200,10 +250,7 @@ class GemmaInferenceHelper(
         closeSession()
         llmInference?.close()
         llmInference = null
-    }
-
-    companion object {
-        private const val MAX_TOKENS = 32000 //1024
-        private const val MAX_NUM_IMAGES = 4 //4
+        _isInitialized.value = false
+        isInitializing = false
     }
 }
