@@ -240,7 +240,7 @@ class ScanViewModel @Inject constructor(
 
     private fun generateQuestions() {
         generateJob?.cancel()
-        generateJob = viewModelScope.launch {
+        generateJob = viewModelScope.launch(Dispatchers.Default) {
             _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
 
             try {
@@ -269,28 +269,27 @@ class ScanViewModel @Inject constructor(
                     Ensure exactly 5-6 questions are output in the "questions" array. DO NOT generate more questions to keep generation time short. Keep responses extremely brief.
                 """.trimIndent()
 
-                var bufferedText = ""
+                val stringBuilder = java.lang.StringBuilder()
                 var lastUpdateTime = System.currentTimeMillis()
 
                 llmInterface.generateResponseStreaming(
                     prompt = message,
                 ).collect { chunk ->
-                    bufferedText += chunk
+                    stringBuilder.append(chunk)
                     val currentTime = System.currentTimeMillis()
                     if (currentTime - lastUpdateTime > 50) {
-                        val newText = bufferedText
+                        val newText = stringBuilder.toString()
                         _uiState.update { it.copy(generatedQuestions = newText) }
                         lastUpdateTime = currentTime
                     }
                 }
                 
                 // Final update to ensure no chunk is missed
-                _uiState.update { it.copy(generatedQuestions = bufferedText) }
+                val finalJsonString = stringBuilder.toString()
+                _uiState.update { it.copy(generatedQuestions = finalJsonString, isGenerating = false) }
 
-                _uiState.update { it.copy(isGenerating = false) }
-                val jsonString = _uiState.value.generatedQuestions
-                Log.d("ScanViewModel", "generateQuestions: $jsonString")
-                parseGeneratedQuestions(jsonString)
+                Log.d("ScanViewModel", "generateQuestions: $finalJsonString")
+                parseGeneratedQuestions(finalJsonString)
             } catch (e: Throwable) {
                 e.printStackTrace()
                 _uiState.update { it.copy(isGenerating = false) }
@@ -301,7 +300,7 @@ class ScanViewModel @Inject constructor(
 
     private fun generateQuestions(images: List<Bitmap>) {
         generateJob?.cancel()
-        generateJob = viewModelScope.launch {
+        generateJob = viewModelScope.launch(Dispatchers.Default) {
             _uiState.update { it.copy(isGenerating = true, generatedQuestions = "") }
 
             try {
@@ -326,29 +325,28 @@ class ScanViewModel @Inject constructor(
                 """.trimIndent()
 
 //                val message = "Generate interview questions from above images and return json"
-                var bufferedText = ""
+                val stringBuilder = java.lang.StringBuilder()
                 var lastUpdateTime = System.currentTimeMillis()
 
                 llmInterface.generateResponseStreaming(
                     prompt = message,
                     images = images
                 ).collect { chunk ->
-                    bufferedText += chunk
+                    stringBuilder.append(chunk)
                     val currentTime = System.currentTimeMillis()
                     if (currentTime - lastUpdateTime > 50) {
-                        val newText = bufferedText
+                        val newText = stringBuilder.toString()
                         _uiState.update { it.copy(generatedQuestions = newText) }
                         lastUpdateTime = currentTime
                     }
                 }
 
                 // Final update to ensure no chunk is missed
-                _uiState.update { it.copy(generatedQuestions = bufferedText) }
+                val finalJsonString = stringBuilder.toString()
+                _uiState.update { it.copy(generatedQuestions = finalJsonString, isGenerating = false) }
 
-                _uiState.update { it.copy(isGenerating = false) }
-                val jsonString = _uiState.value.generatedQuestions
-                Log.d("ScanViewModel", "generateQuestions: $jsonString")
-                parseGeneratedQuestions(jsonString)
+                Log.d("ScanViewModel", "generateQuestions: $finalJsonString")
+                parseGeneratedQuestions(finalJsonString)
             } catch (e: Throwable) {
                 e.printStackTrace()
                 _uiState.update { it.copy(isGenerating = false) }

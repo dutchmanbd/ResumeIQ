@@ -140,7 +140,7 @@ class QuestionDetailViewModel @Inject constructor(
     private fun generateAiAnswer() {
         val currentQuestion = state.value.question ?: return
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Default) {
             _isGenerating.value = true
             _generatedAnswer.value = ""
 
@@ -155,9 +155,20 @@ class QuestionDetailViewModel @Inject constructor(
                     3. Output ONLY the raw response text. Do not wrap the output in markdown code blocks.
                 """.trimIndent()
 
+                val stringBuilder = java.lang.StringBuilder()
+                var lastUpdateTime = System.currentTimeMillis()
+
                 llmInterface.generateResponseStreaming(prompt).collect { partialResult ->
-                    _generatedAnswer.value += partialResult
+                    stringBuilder.append(partialResult)
+                    val currentTime = System.currentTimeMillis()
+                    if (currentTime - lastUpdateTime > 50) {
+                        _generatedAnswer.value = stringBuilder.toString()
+                        lastUpdateTime = currentTime
+                    }
                 }
+                
+                // Final update
+                _generatedAnswer.value = stringBuilder.toString()
 
                 // Generation complete, save to DB
                 val finalAnswer = _generatedAnswer.value.trim()
