@@ -309,7 +309,7 @@ class ScanViewModel @Inject constructor(
                 val message = """
                     You are an expert technical interviewer and recruiter analyzing the attached resume image.
                     TASK:
-                    Generate a highly professional, real-world interview question bank based ONLY resume image.
+                    Generate a highly professional, real-world interview question bank based ONLY on the candidate's experience, role, and skills shown in the resume.
 
                     QUESTION STYLE:
                     Create realistic, scenario-based, and technical questions tailored to their specific industry and seniority. Questions should be concise (1-2 sentences maximum) but challenging, reflecting actual interviews for their target role.
