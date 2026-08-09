@@ -126,6 +126,14 @@ fun ScanScreen(
         }
     }
 
+    val scrollState = rememberScrollState()
+
+    LaunchedEffect(uiState.generatedQuestions.length) {
+        if (uiState.isGenerating && uiState.generatedQuestions.isNotEmpty()) {
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
+
     LaunchedEffect(viewModel.event) {
         viewModel.event.collectLatest { effect ->
             when (effect) {
@@ -230,7 +238,7 @@ fun ScanScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 

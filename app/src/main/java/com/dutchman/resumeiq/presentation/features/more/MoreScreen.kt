@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,6 +49,7 @@ fun MoreScreen(
     val currentLanguage = uiState.language
     val currentTheme = uiState.theme
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showClearDataDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     if (showLogoutDialog) {
@@ -68,6 +70,30 @@ fun MoreScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showClearDataDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDataDialog = false },
+            title = { Text("Clear All Data", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to clear all data? This will permanently delete all your questions and answers.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.onEvent(MainEvent.ClearAllData)
+                        showClearDataDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Clear")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDataDialog = false }) {
                     Text("Cancel")
                 }
             }
@@ -191,6 +217,13 @@ fun MoreScreen(
                 title = "Export and Share",
                 subtitle = "Export data and share it",
                 onClick = { viewModel.onEvent(MainEvent.ExportData(context, share = true)) }
+            )
+
+            ActionItem(
+                icon = Icons.Default.Delete,
+                title = "Clear All Data",
+                subtitle = "Delete all questions and answers",
+                onClick = { showClearDataDialog = true }
             )
 
             ActionItem(

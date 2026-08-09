@@ -187,7 +187,17 @@ class MainViewModel @Inject constructor(
                 }
             }
 
-
+            MainEvent.ClearAllData -> {
+                viewModelScope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            appDatabase.questionDao.clearQuestions()
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
         }
     }
 
