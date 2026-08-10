@@ -7,7 +7,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -40,7 +39,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -137,19 +135,51 @@ fun QuestionScreen(
             )
         }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            LazyColumn(
-                state = listState,
+            AnimatedVisibility(
+                visible = isDownloaded && !isInitialized,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Sit, it takes 1 minute to complete",
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
-        ) {
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                ) {
             if (interviewer != null) {
                 item {
                     Column(
@@ -163,7 +193,7 @@ fun QuestionScreen(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        if (interviewer?.designation.isNullOrEmpty()) {
+                        if (!interviewer?.designation.isNullOrEmpty()) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = interviewer?.designation ?: "",
@@ -233,12 +263,12 @@ fun QuestionScreen(
                                 )
                             }
                         }
-                    )
-                }
+                        )
+                    }
                 }
             }
-            
-            AnimatedVisibility(
+
+            androidx.compose.animation.AnimatedVisibility(
                 visible = !listState.isScrollInProgress,
                 enter = slideInVertically(initialOffsetY = { it * 2 }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it * 2 }) + fadeOut(),
@@ -270,6 +300,7 @@ fun QuestionScreen(
             }
         }
     }
+}
 }
 
 @OptIn(ExperimentalFoundationApi::class)
