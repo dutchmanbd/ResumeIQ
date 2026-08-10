@@ -6,6 +6,7 @@ import android.util.Log
 import com.google.ai.edge.litertlm.*
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -63,10 +64,16 @@ class LiteRtInferenceHelper(
 
         withContext(modelDispatcher) {
             Log.e(TAG, "initialize: execute")
-            // Lowest possible OS-level scheduling priority
-            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_LOWEST)
+            // Background cgroup — limits CPU to ~5-10% and lowers I/O priority,
+            // preventing the model-loading thread from starving the UI.
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             try {
                 ensureActive() // Check for cancellation before heavy work
+
+                // Free memory upfront so the GC doesn't need to run (and pause
+                // the main thread) while the native engine is allocating.
+                Runtime.getRuntime().gc()
+                delay(150) // let GC finish and give the UI a head-start
 
                 val cacheDirectory =
                     context.applicationContext.getExternalFilesDir(null)?.absolutePath
@@ -74,14 +81,15 @@ class LiteRtInferenceHelper(
                 Log.e(TAG, "initialize: cache: $cacheDirectory")
                 val visionBackend = if (supportsVision) Backend.GPU() else null
 
-                val backendsToTry = if (useGpuForText) {
-                    listOf(Backend.GPU(), Backend.CPU())
-                } else {
-                    listOf(Backend.CPU(), Backend.GPU())
-                }
+                // ---------- Phase 1: CPU-first init (no GPU contention) ----------
+                // Always try CPU backend first so the GPU stays free for
+                // Compose/Skia rendering and the CircularProgressIndicator
+                // keeps animating smoothly.
+                val cpuFirstBackends = listOf(Backend.CPU(), Backend.GPU())
 
                 var newEngine: Engine? = null
-                for (backend in backendsToTry) {
+                var activeBackend: Backend? = null
+                for (backend in cpuFirstBackends) {
                     ensureActive() // Check for cancellation between backend attempts
 
                     var candidateEngine: Engine? = null
@@ -95,9 +103,10 @@ class LiteRtInferenceHelper(
                             cacheDir = cacheDirectory
                         )
                         candidateEngine = Engine(engineConfig)
-                        Log.e(TAG, "initialize: before call init")
+                        Log.e(TAG, "initialize: before call init with ${backend.name}")
                         candidateEngine.initialize()
                         newEngine = candidateEngine
+                        activeBackend = backend
                         Log.d(TAG, "LiteRT engine initialized with backend: ${backend.name}")
                         break
                     } catch (e: Exception) {
@@ -110,6 +119,36 @@ class LiteRtInferenceHelper(
                     engine = newEngine
                     _isInitialized.value = true
                     Log.d(TAG, "LiteRT engine initialization complete.")
+
+                    // ---------- Phase 2: GPU upgrade (if needed) ----------
+                    // If the user prefers GPU but we initialised on CPU,
+                    // re-initialise on GPU now. The UI already shows the
+                    // normal FAB icon (no spinner), so any GPU contention
+                    // during this upgrade is invisible to the user.
+                    if (useGpuForText && activeBackend is Backend.CPU) {
+                        ensureActive()
+                        delay(300) // brief pause so the UI can settle
+                        try {
+                            val gpuConfig = EngineConfig(
+                                modelPath = modelPath,
+                                backend = Backend.GPU(),
+                                visionBackend = visionBackend,
+                                maxNumTokens = 4000,
+                                maxNumImages = 4,
+                                cacheDir = cacheDirectory
+                            )
+                            val gpuEngine = Engine(gpuConfig)
+                            gpuEngine.initialize()
+                            // Swap: close the old CPU engine, install the GPU one.
+                            val oldEngine = engine
+                            engine = gpuEngine
+                            runCatching { oldEngine?.close() }
+                            Log.d(TAG, "Upgraded to GPU backend.")
+                        } catch (e: Exception) {
+                            // GPU upgrade failed — keep the working CPU engine.
+                            Log.w(TAG, "GPU upgrade failed, keeping CPU backend", e)
+                        }
+                    }
                 } else {
                     Log.e(TAG, "All backends failed to initialize engine.")
                     _isInitialized.value = false
