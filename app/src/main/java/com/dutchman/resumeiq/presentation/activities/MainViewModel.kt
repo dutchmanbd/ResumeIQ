@@ -62,10 +62,10 @@ class MainViewModel @Inject constructor(
             }
 
             MainEvent.InitializeModel -> {
-                viewModelScope.launch(Dispatchers.IO) {
+                viewModelScope.launch {
                     if (llmInterface.isInitialized.value) return@launch
                     try {
-                        val file = fileStorage.getDownloadedFile() ?: return@launch
+                        val file = withContext(Dispatchers.IO) { fileStorage.getDownloadedFile() } ?: return@launch
                         llmInterface.initialize(file.absolutePath)
                     } catch (e: Throwable) {
                         Log.e("MainViewModel", "Failed to initialize LLM", e)
