@@ -22,10 +22,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.ceil
+import kotlin.math.round
 
 data class DownloadState(
     val progress: Int = 0,
-    val requiredGB: Double = 4.2,
+    val requiredGB: Double = 3.6,
     val currentBytes: Long = 0,
     val totalBytes: Long = 0,
     val speedMbPerSec: String = "0.0",
@@ -58,10 +60,9 @@ class ModelDownloadViewModel @Inject constructor(
     }
 
     private fun checkStorage() {
-        val stat = android.os.StatFs(android.os.Environment.getDataDirectory().path)
-        val availableBytes = stat.availableBlocksLong * stat.blockSizeLong
-        val requiredBytes = downloadState.value.requiredGB * 1024 * 1024 * 1024 // 4.2 GB
-        _downloadState.update { it.copy(hasEnoughStorage = availableBytes > requiredBytes) }
+        val requiredBytes = ceil(downloadState.value.requiredGB) * 1024 * 1024 * 1024 // 3.5 GB
+        val hasEnoughStorage = fileStorage.prepareStorageForDownload(requiredBytes.toLong())
+        _downloadState.update { it.copy(hasEnoughStorage = hasEnoughStorage) }
     }
 
     fun skipDownload() {

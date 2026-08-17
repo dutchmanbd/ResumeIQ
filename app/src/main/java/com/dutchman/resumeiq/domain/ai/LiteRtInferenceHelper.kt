@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.yield
+import kotlinx.coroutines.delay
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 
@@ -96,6 +98,11 @@ class LiteRtInferenceHelper(
                         )
                         candidateEngine = Engine(engineConfig)
                         Log.e(TAG, "initialize: before call init")
+                        
+                        // Yield to let UI settle before heavy native init
+                        yield()
+                        delay(1000)
+
                         candidateEngine.initialize()
                         newEngine = candidateEngine
                         Log.d(TAG, "LiteRT engine initialized with backend: ${backend.name}")

@@ -62,10 +62,10 @@ class MainViewModel @Inject constructor(
             }
 
             MainEvent.InitializeModel -> {
-                viewModelScope.launch {
+                viewModelScope.launch(Dispatchers.Default) {
                     if (llmInterface.isInitialized.value) return@launch
                     try {
-                        val file = withContext(Dispatchers.IO) { fileStorage.getDownloadedFile() } ?: return@launch
+                        val file = fileStorage.getDownloadedFile() ?: return@launch
                         llmInterface.initialize(file.absolutePath)
                     } catch (e: Throwable) {
                         Log.e("MainViewModel", "Failed to initialize LLM", e)
@@ -140,42 +140,40 @@ class MainViewModel @Inject constructor(
 
             is MainEvent.ExportData -> {
                 val context = event.context
-                viewModelScope.launch {
+                viewModelScope.launch(Dispatchers.IO) {
                     try {
-                        withContext(Dispatchers.IO) {
-                            appDatabase.checkpoint()
-                            val dbFile = context.getDatabasePath(AppDatabase.DATABASE_NAME)
-                            
-                            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-                            val fileName = "ResumeIQ_$timestamp.db"
-                            
-                            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                            val exportFile = File(downloadsDir, fileName)
-                            
-                            dbFile.copyTo(exportFile, overwrite = true)
-                            
-                            withContext(Dispatchers.Main) {
-                                if (event.share) {
-                                    // For sharing, we need to copy it to a cache path compatible with FileProvider
-                                    val cacheFile = File(File(context.cacheDir, "shared_db").apply { mkdirs() }, fileName)
-                                    exportFile.copyTo(cacheFile, overwrite = true)
-                                    
-                                    val uri = FileProvider.getUriForFile(
-                                        context, 
-                                        "${context.packageName}.provider", 
-                                        cacheFile
-                                    )
-                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "application/octet-stream"
-                                        putExtra(Intent.EXTRA_STREAM, uri)
-                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    }
-                                    val chooser = Intent.createChooser(intent, "Share Database")
-                                    chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    context.startActivity(chooser)
-                                } else {
-                                    Toast.makeText(context, "Exported to Downloads: $fileName", Toast.LENGTH_LONG).show()
+                        appDatabase.checkpoint()
+                        val dbFile = context.getDatabasePath(AppDatabase.DATABASE_NAME)
+                        
+                        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                        val fileName = "ResumeIQ_$timestamp.db"
+                        
+                        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                        val exportFile = File(downloadsDir, fileName)
+                        
+                        dbFile.copyTo(exportFile, overwrite = true)
+                        
+                        withContext(Dispatchers.Main) {
+                            if (event.share) {
+                                // For sharing, we need to copy it to a cache path compatible with FileProvider
+                                val cacheFile = File(File(context.cacheDir, "shared_db").apply { mkdirs() }, fileName)
+                                exportFile.copyTo(cacheFile, overwrite = true)
+                                
+                                val uri = FileProvider.getUriForFile(
+                                    context, 
+                                    "${context.packageName}.provider", 
+                                    cacheFile
+                                )
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/octet-stream"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
+                                val chooser = Intent.createChooser(intent, "Share Database")
+                                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                context.startActivity(chooser)
+                            } else {
+                                Toast.makeText(context, "Exported to Downloads: $fileName", Toast.LENGTH_LONG).show()
                             }
                         }
                     } catch (e: Exception) {
@@ -188,11 +186,10 @@ class MainViewModel @Inject constructor(
             }
 
             MainEvent.ClearAllData -> {
-                viewModelScope.launch {
+                viewModelScope.launch(Dispatchers.IO) {
                     try {
-                        withContext(Dispatchers.IO) {
-                            appDatabase.questionDao.clearQuestions()
-                        }
+                        appDatabase.questionDao.clearQuestions()
+                        userFactory.saveLastQuestionIndex(0)
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }

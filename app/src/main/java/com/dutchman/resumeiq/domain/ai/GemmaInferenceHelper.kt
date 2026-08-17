@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.yield
+import kotlinx.coroutines.delay
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -107,6 +109,10 @@ class GemmaInferenceHelper(
                 if (supportsVision) {
                     builder.setMaxNumImages(MAX_NUM_IMAGES)
                 }
+
+                // Yield to let UI settle before heavy native init
+                yield()
+                delay(1000)
 
                 llmInference = LlmInference.createFromOptions(context, builder.build())
                 _isInitialized.value = true

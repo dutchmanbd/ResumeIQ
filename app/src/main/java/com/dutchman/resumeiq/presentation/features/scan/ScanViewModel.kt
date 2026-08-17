@@ -257,7 +257,7 @@ class ScanViewModel @Inject constructor(
                     JSON OUTPUT FORMAT:
                     Output EXCLUSIVELY a raw JSON object. Do not include markdown tags like ```json, do not write code blocks, and do not write closing/opening chat greetings. Use this exact compact schema:
 
-                    {"questions": [{"c": "Skill | Lead | Behav", "l": "Basic | Adv", "q": "The professional interview question."}], "info":{ "name":"Jewel Rana", "designation":"Senior Mobile Application Developer", "Mobile":"+8801812386609"}}
+                    {"questions": [{"c": "Skill | Lead | Behav", "l": "Basic | Adv", "q": "The professional interview question."}]}
                     
                     FIELD DESCRIPTIONS:
                     - questions: The array containing the generated questions.
@@ -266,7 +266,7 @@ class ScanViewModel @Inject constructor(
                     - q (Question): The actual question text.
                     
                     GENERATION REQUIREMENTS:
-                    Ensure exactly 5-6 questions are output in the "questions" array. DO NOT generate more questions to keep generation time short. Keep responses extremely brief.
+                    Ensure minimum $MINIMUM_QUESTIONS questions are output in the "questions" array.
                 """.trimIndent()
 
                 val stringBuilder = java.lang.StringBuilder()
@@ -322,6 +322,9 @@ class ScanViewModel @Inject constructor(
                     - c (Category): Must be exactly one of: "Skill" (Technical/Core Skills), "Lead" (Leadership/Mentoring), "Behav" (Behavioral/Scenario).
                     - l (Level): Must be exactly one of: "Basic" or "Adv".
                     - q (Question): The actual question text.
+                    
+                    GENERATION REQUIREMENTS:
+                    Ensure minimum $MINIMUM_QUESTIONS questions are output in the "questions" array.
                 """.trimIndent()
 
 //                val message = "Generate interview questions from above images and return json"
@@ -589,7 +592,7 @@ class ScanViewModel @Inject constructor(
     }
 
     companion object {
-        const val MINIMUM_QUESTIONS = 10
+        const val MINIMUM_QUESTIONS = 15
         const val ESTIMATED_ANALYSIS_TIME_SECONDS = 25
     }
 }

@@ -45,7 +45,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.material.icons.filled.ArrowBack
 import com.dutchman.resumeiq.presentation.activities.MainEvent
 import com.dutchman.resumeiq.presentation.activities.MainViewModel
 
@@ -145,22 +144,29 @@ fun QuestionScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primaryContainer,
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             strokeWidth = 2.dp
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Sit, it takes 1 minute to complete",
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            text = "Initializing Model",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.W700
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Sit tight, this can take up to 1 minute",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium
                         )
