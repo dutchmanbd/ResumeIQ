@@ -84,31 +84,36 @@ class ModelDownloadViewModel @Inject constructor(
 
     fun startDownload(modelUrl: String = Constants.MODEL_4B) {
         // Always delete the existing file to force a fresh re-download when triggered manually
-        fileStorage.deleteFile()
-        userFactory.saveIsModelDownloaded(false)
-        _downloadState.update { it.copy(isModelDownloaded = false, status = DownloadStatus.IDLE) }
-        _downloadState.value = _downloadState.value.copy(fileName = FileStorage.DISPLAY_NAME)
-        
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+        viewModelScope.launch {
+            fileStorage.deleteFile()
 
-        val inputData = Data.Builder()
-            .putString(ModelDownloadWorker.KEY_URL, modelUrl)
-            .build()
 
-        val downloadRequest = OneTimeWorkRequestBuilder<ModelDownloadWorker>()
-            .setConstraints(constraints)
-            .setInputData(inputData)
-            .setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-            .build()
+            userFactory.saveIsModelDownloaded(false)
+            _downloadState.update { it.copy(isModelDownloaded = false, status = DownloadStatus.IDLE) }
+            _downloadState.value = _downloadState.value.copy(fileName = FileStorage.DISPLAY_NAME)
 
-        // Enqueue unique work to avoid multiple downloads, replacing any stuck or previous failed jobs
-        workManager.enqueueUniqueWork(
-            "ModelDownloadWork",
-            ExistingWorkPolicy.REPLACE,
-            downloadRequest
-        )
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val inputData = Data.Builder()
+                .putString(ModelDownloadWorker.KEY_URL, modelUrl)
+                .build()
+
+            val downloadRequest = OneTimeWorkRequestBuilder<ModelDownloadWorker>()
+                .setConstraints(constraints)
+                .setInputData(inputData)
+                .setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .build()
+
+            // Enqueue unique work to avoid multiple downloads, replacing any stuck or previous failed jobs
+            workManager.enqueueUniqueWork(
+                "ModelDownloadWork",
+                ExistingWorkPolicy.REPLACE,
+                downloadRequest
+            )
+        }
+
     }
 
     private fun observeDownloadWork() {
